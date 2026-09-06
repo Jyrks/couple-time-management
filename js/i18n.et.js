@@ -12,6 +12,7 @@ export const T = {
   saving: 'Salvestan…',
   saved: 'Salvestatud',
   saveError: 'Salvestamine ebaõnnestus',
+  forbidden: 'Tokenil pole kirjutusõigust (GitHub: Contents → Read and write)',
   expired: 'Ligipääs aegunud, uuenda seadistust (setup.html)',
   tabs: { week: 'Nädal', review: 'Ülevaade', settings: 'Seaded' },
   today: 'Täna',

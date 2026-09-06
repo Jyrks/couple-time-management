@@ -135,7 +135,7 @@ async function doSave(message, retried = false) {
       render();
       return doSave(message, true);
     }
-    setStatus(T.saveError, true);
+    setStatus(err instanceof GitHubError && err.status === 403 ? T.forbidden : T.saveError, true);
   }
 }
 
