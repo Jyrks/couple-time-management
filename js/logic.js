@@ -101,15 +101,16 @@ export function applyPreset(events, key, date, settings, opts = {}) {
   return sortEvents([...kept, ...preset.build(date, opts)]);
 }
 
-export function fillWork(events, dates, settings, now) {
+export function fillWork(events, dates, settings, now, today = todayStr()) {
   const added = [];
   for (const date of dates) {
     const dow = dayOfWeek(date);
+    const status = date < today ? 'tehtud' : 'plaan';
     for (const p of PERSONS) {
       const w = settings.work?.[p];
       if (!w || !w.days.includes(dow)) continue;
       const has = events.some((ev) => ev.date === date && ev.type === 'töö' && (ev.who === p || ev.who === 'both'));
-      if (!has) added.push(makeEvent(date, w.start, w.end, p, 'töö', { now }));
+      if (!has) added.push(makeEvent(date, w.start, w.end, p, 'töö', { now, status }));
     }
   }
   return added.length ? sortEvents([...events, ...added]) : events;

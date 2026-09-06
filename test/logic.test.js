@@ -130,14 +130,16 @@ test('applyPreset with status tehtud', () => {
 test('fillWork adds missing work events only', () => {
   const dates = weekDates('2026-09-06');
   const existing = ev({ date: '2026-08-31', start: '10:00', end: '18:00', who: 'jürgen', type: 'töö' });
-  const out = fillWork([existing], dates, settings, NOW);
+  const out = fillWork([existing], dates, settings, NOW, '2026-09-02');
   const work = out.filter((e) => e.type === 'töö');
   assert.equal(work.length, 10); // 5 days x 2 persons
+  assert.ok(work.filter((e) => e.date < '2026-09-02' && e.id !== existing.id).every((e) => e.status === 'tehtud'));
+  assert.ok(work.filter((e) => e.date >= '2026-09-02').every((e) => e.status === 'plaan'));
   assert.ok(work.some((e) => e.id === existing.id && e.start === '10:00'));
   assert.equal(work.filter((e) => e.date === '2026-09-05').length, 0); // Saturday
   assert.equal(work.filter((e) => e.date === '2026-08-31' && e.who === 'jürgen').length, 1);
   // idempotent
-  assert.equal(fillWork(out, dates, settings, NOW).length, out.length);
+  assert.equal(fillWork(out, dates, settings, NOW, '2026-09-02').length, out.length);
 });
 
 test('fillWork treats a "both" work event as covering both persons', () => {

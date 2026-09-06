@@ -1629,7 +1629,7 @@ Checklist:
 - Seaded saves sitters and work hours.
 - Viewport 375px wide: no horizontal scroll, tabs at bottom.
 
-- [ ] **Step 2: Fix anything found, run `node --test test/`, commit**
+- [ ] **Step 2: Fix anything found, run `node --test test/*.test.js`, commit**
 
 ```bash
 git add -A && git commit -m "test: browser smoke checklist"

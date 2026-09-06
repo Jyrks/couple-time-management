@@ -69,6 +69,7 @@ main { padding: 10px 8px 80px; max-width: 1100px; margin: 0 auto; }
 .grid { background: var(--panel); border: 1px solid var(--line); border-radius: 0 0 10px 10px; overflow: hidden; touch-action: pan-y; }
 .timecol { position: relative; }
 .hour { position: absolute; right: 4px; transform: translateY(-7px); font-size: 10px; color: var(--muted); }
+.hour:first-child { transform: none; }
 .daycol { position: relative; border-left: 1px solid var(--line); }
 .daycol.today { background: var(--today); }
 .gridline { position: absolute; left: 0; right: 0; border-top: 1px solid var(--line); }

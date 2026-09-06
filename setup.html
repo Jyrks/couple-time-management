@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="et">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meie aeg – seadistus</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="login">
+  <h1>Seadistus</h1>
+  <p class="hint">Loo GitHubis fine-grained token (Settings → Developer settings → Personal access tokens → Fine-grained), ainult repole <b>couple-time-management</b>, õigus <b>Contents: Read and write</b>. Token krüpteeritakse mõlema parooliga ja salvestatakse <code>config.json</code> faili. Token ise ei lahku sellest brauserist.</p>
+  <form id="f">
+    <label>GitHub token <input name="token" required autocomplete="off"></label>
+    <label>Jürgeni parool <input name="pj" type="password" required></label>
+    <label>Eike parool <input name="pe" type="password" required></label>
+    <p class="error" id="msg"></p>
+    <button class="primary" type="submit">Salvesta config.json</button>
+  </form>
+</div>
+<script type="module">
+import { buildConfig } from './js/crypto.js';
+import { GitHubStore, GitHubError } from './js/github.js';
+
+const OWNER = 'Jyrks', REPO = 'couple-time-management';
+const f = document.getElementById('f');
+const msg = document.getElementById('msg');
+
+f.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = f.querySelector('button');
+  btn.disabled = true;
+  msg.style.color = '';
+  msg.textContent = 'Kontrollin tokenit…';
+  try {
+    const token = f.token.value.trim();
+    const store = new GitHubStore({ owner: OWNER, repo: REPO, token });
+    await store.get('data/events.json');
+    msg.textContent = 'Krüpteerin (võtab paar sekundit)…';
+    const cfg = await buildConfig(token, { 'jürgen': f.pj.value, 'eike': f.pe.value });
+    let sha = null;
+    try { sha = (await store.get('config.json')).sha; } catch (err) { if (!(err instanceof GitHubError && err.status === 404)) throw err; }
+    await store.put('config.json', JSON.stringify(cfg, null, 2) + '\n', 'setup: uuenda config.json', sha);
+    msg.style.color = 'green';
+    msg.textContent = 'Valmis. GitHub Pages uuendab 1–2 minuti jooksul, seejärel logi sisse: ';
+    msg.append(Object.assign(document.createElement('a'), { href: './', textContent: 'ava rakendus' }));
+    f.reset();
+  } catch (err) {
+    console.error(err);
+    msg.textContent = err instanceof GitHubError
+      ? `GitHub viga ${err.status} – kontrolli tokenit ja õigusi`
+      : `Viga: ${err.message}`;
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
