@@ -1,5 +1,20 @@
 {
   "version": 1,
-  "kdf": { "name": "PBKDF2", "hash": "SHA-256", "iterations": 300000 },
-  "users": {}
+  "kdf": {
+    "name": "PBKDF2",
+    "hash": "SHA-256",
+    "iterations": 300000
+  },
+  "users": {
+    "jürgen": {
+      "salt": "HZYRuCyxsWUhJ411KlvMhA==",
+      "iv": "mlHHw0zlrU3Lsn/u",
+      "ciphertext": "NGAUw2tjPdQTSLnBSQjdSjhdfQPBI8iUb/PkGCiORRXeK0f4b4NqZm/PjnDq4BuxbGQKRmnOmi2dmapFXkbkYvGmgmw8pqCgHjjHQF7yEw/+0jQUNd6looyZUDJ4xDl6QFCT/3JmueTVhfRwyg=="
+    },
+    "eike": {
+      "salt": "YXMXvCctqYZSBaob4woHUw==",
+      "iv": "Sx6XzQGXL6SJUu1e",
+      "ciphertext": "Rf+95mZAeUMNXsUyhAbkw5hROJ+BE9Ec6Sxp5ealToLqtbSXwTkmZhko2wHAn6e46vIM4PSJkPeHifzuDhaCz1e0sUKeNz/pix2pNSIxJEyewwYcPgj2pqOxNXu/E3uNZ9sUUApIlnHxNqgN3w=="
+    }
+  }
 }
