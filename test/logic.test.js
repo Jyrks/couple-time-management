@@ -2,8 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   PERSONS, TYPES, weekStart, addDays, weekDates, dayOfWeek, toMinutes, fromMinutes,
-  durationHours, newId, sortEvents, presets, applyPreset, fillWork, summarize,
+  durationHours, newId, sortEvents, presets, applyPreset, summarize,
   balanceOverWeeks, eveningOverview, mergeEvents, todayStr,
+  expandEvents, excludeDate, detachInstance, deleteSeries, snap15, moveEvent, resizeEvent,
 } from '../js/logic.js';
 
 const settings = {
@@ -127,27 +128,6 @@ test('applyPreset with status tehtud', () => {
   assert.ok(out.every((e) => e.status === 'tehtud'));
 });
 
-test('fillWork adds missing work events only', () => {
-  const dates = weekDates('2026-09-06');
-  const existing = ev({ date: '2026-08-31', start: '10:00', end: '18:00', who: 'jürgen', type: 'töö' });
-  const out = fillWork([existing], dates, settings, NOW, '2026-09-02');
-  const work = out.filter((e) => e.type === 'töö');
-  assert.equal(work.length, 10); // 5 days x 2 persons
-  assert.ok(work.filter((e) => e.date < '2026-09-02' && e.id !== existing.id).every((e) => e.status === 'tehtud'));
-  assert.ok(work.filter((e) => e.date >= '2026-09-02').every((e) => e.status === 'plaan'));
-  assert.ok(work.some((e) => e.id === existing.id && e.start === '10:00'));
-  assert.equal(work.filter((e) => e.date === '2026-09-05').length, 0); // Saturday
-  assert.equal(work.filter((e) => e.date === '2026-08-31' && e.who === 'jürgen').length, 1);
-  // idempotent
-  assert.equal(fillWork(out, dates, settings, NOW, '2026-09-02').length, out.length);
-});
-
-test('fillWork treats a "both" work event as covering both persons', () => {
-  const both = ev({ date: '2026-09-01', start: '09:00', end: '17:00', who: 'both', type: 'töö' });
-  const out = fillWork([both], ['2026-09-01'], settings, NOW);
-  assert.equal(out.length, 1);
-});
-
 test('summarize splits by person, type and status; both counts for both', () => {
   const dates = weekDates('2026-09-06');
   const events = [
@@ -157,7 +137,7 @@ test('summarize splits by person, type and status; both counts for both', () => 
     ev({ date: '2026-09-03', start: '18:00', end: '21:00', who: 'both', type: 'koos', status: 'plaan' }),
     ev({ date: '2026-09-10', start: '17:00', end: '21:00', who: 'eike', type: 'vaba', status: 'plaan' }), // next week
   ];
-  const s = summarize(events, dates);
+  const s = summarize(events, dates, '2026-09-06');
   assert.equal(s.eike.vaba.tehtud, 4);
   assert.equal(s.eike.vaba.plaan, 0);
   assert.equal(s['jürgen'].laara.tehtud, 4);
@@ -173,11 +153,11 @@ test('balanceOverWeeks sums vaba over n weeks ending at week', () => {
     ev({ date: '2026-08-04', start: '17:00', end: '21:00', who: 'eike', type: 'vaba', status: 'tehtud' }), // 5 weeks back, excluded
     ev({ date: '2026-09-02', start: '17:00', end: '19:00', who: 'jürgen', type: 'vaba', status: 'plaan' }),
   ];
-  const b = balanceOverWeeks(events, '2026-08-31', 4);
+  const b = balanceOverWeeks(events, '2026-08-31', 4, '2026-09-06');
   assert.equal(b.eike, 4);
   assert.equal(b['jürgen'], 2);
   assert.equal(b.diff, -2);
-  const w = balanceOverWeeks(events, '2026-08-31', 1);
+  const w = balanceOverWeeks(events, '2026-08-31', 1, '2026-09-06');
   assert.equal(w.eike, 0);
   assert.equal(w.diff, 2);
 });
@@ -191,7 +171,7 @@ test('eveningOverview reports who had Laara, who was free, koos', () => {
     ev({ date: '2026-09-02', start: '17:00', end: '21:00', who: 'both', type: 'laara' }),
     ev({ date: '2026-09-03', start: '09:00', end: '17:00', who: 'jürgen', type: 'töö' }), // not evening
   ];
-  const o = eveningOverview(events, dates, settings);
+  const o = eveningOverview(events, dates, settings, '2026-09-06');
   assert.equal(o.length, 7);
   assert.deepEqual(o[0], { date: '2026-08-31', laara: ['jürgen'], vaba: ['eike'], koos: false, note: '', empty: false });
   assert.deepEqual(o[1], { date: '2026-09-01', laara: [], vaba: [], koos: true, note: 'vanaema', empty: false });
@@ -220,4 +200,122 @@ test('mergeEvents: remote newer wins over local', () => {
   const l = ev({ id: 'x', date: '2026-09-01', start: '17:00', end: '18:00', who: 'eike', type: 'vaba', updated: '2026-09-06T10:00:00Z' });
   const r = { ...l, end: '20:00', updated: '2026-09-06T12:00:00Z' };
   assert.equal(mergeEvents([r], [l], new Set())[0].end, '20:00');
+});
+
+const TODAY = '2026-09-03';
+const master = ev({
+  id: 'workj000', date: '2026-08-31', start: '09:00', end: '17:00', who: 'jürgen', type: 'töö',
+  repeat: { days: [1, 2, 3, 4, 5], until: null }, exdates: [],
+});
+
+test('expandEvents: series produces one instance per matching weekday, past ones tehtud', () => {
+  const dates = weekDates('2026-09-06');
+  const out = expandEvents([master], dates, TODAY);
+  assert.equal(out.length, 5);
+  assert.deepEqual(out.map((e) => e.date), ['2026-08-31', '2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04']);
+  assert.ok(out.every((e) => e.virtual && e.seriesId === 'workj000' && e.origDate === e.date && e.id === `workj000@${e.date}`));
+  assert.deepEqual(out.map((e) => e.status), ['tehtud', 'tehtud', 'tehtud', 'plaan', 'plaan']);
+  assert.equal(out[0].repeat, undefined);
+});
+
+test('expandEvents: honours start date, until and exdates', () => {
+  const m = { ...master, date: '2026-09-02', repeat: { days: [1, 2, 3, 4, 5], until: '2026-09-03' }, exdates: ['2026-09-03'] };
+  const out = expandEvents([m], weekDates('2026-09-06'), TODAY);
+  assert.deepEqual(out.map((e) => e.date), ['2026-09-02']);
+});
+
+test('expandEvents: override replaces the virtual instance, plain events pass through', () => {
+  const override = ev({ id: 'ovr00001', seriesId: 'workj000', origDate: '2026-09-01', date: '2026-09-01', start: '10:00', end: '18:00', who: 'jürgen', type: 'töö' });
+  const plain = ev({ date: '2026-09-01', start: '18:00', end: '19:00', who: 'eike', type: 'vaba' });
+  const out = expandEvents([master, override, plain], ['2026-09-01'], TODAY);
+  assert.equal(out.length, 2);
+  const w = out.find((e) => e.type === 'töö');
+  assert.equal(w.id, 'ovr00001');
+  assert.equal(w.start, '10:00');
+  assert.ok(!w.virtual);
+});
+
+test('expandEvents: series master itself is never returned unexpanded', () => {
+  const out = expandEvents([master], ['2026-09-05'], TODAY); // Saturday
+  assert.equal(out.length, 0);
+});
+
+test('excludeDate adds an exdate and drops any override for that date', () => {
+  const override = ev({ id: 'ovr00001', seriesId: 'workj000', origDate: '2026-09-01', date: '2026-09-01', start: '10:00', end: '18:00', who: 'jürgen', type: 'töö' });
+  const out = excludeDate([master, override], 'workj000', '2026-09-01', NOW);
+  assert.equal(out.length, 1);
+  assert.deepEqual(out[0].exdates, ['2026-09-01']);
+  assert.equal(out[0].updated, NOW);
+  assert.equal(expandEvents(out, ['2026-09-01'], TODAY).length, 0);
+});
+
+test('detachInstance creates an override with changes applied', () => {
+  const [inst] = expandEvents([master], ['2026-09-02'], TODAY);
+  const out = detachInstance([master], inst, { start: '08:00', end: '16:00', note: 'varem' }, NOW);
+  assert.equal(out.length, 2);
+  const o = out.find((e) => e.seriesId === 'workj000');
+  assert.equal(o.origDate, '2026-09-02');
+  assert.equal(o.date, '2026-09-02');
+  assert.equal(o.start, '08:00');
+  assert.equal(o.note, 'varem');
+  assert.equal(o.status, 'tehtud'); // past instance keeps computed status
+  assert.ok(!o.virtual && !o.repeat);
+  assert.match(o.id, /^[0-9a-z]{8}$/);
+  const shown = expandEvents(out, ['2026-09-02'], TODAY);
+  assert.equal(shown.length, 1);
+  assert.equal(shown[0].start, '08:00');
+});
+
+test('deleteSeries removes master and its overrides only', () => {
+  const override = ev({ id: 'ovr00001', seriesId: 'workj000', origDate: '2026-09-01', date: '2026-09-01', start: '10:00', end: '18:00', who: 'jürgen', type: 'töö' });
+  const plain = ev({ date: '2026-09-01', start: '18:00', end: '19:00', who: 'eike', type: 'vaba' });
+  const out = deleteSeries([master, override, plain], 'workj000');
+  assert.deepEqual(out.map((e) => e.id), [plain.id]);
+});
+
+test('summarize and balance count series instances', () => {
+  const dates = weekDates('2026-09-06');
+  const s = summarize([master], dates, TODAY);
+  assert.equal(s['jürgen']['töö'].tehtud, 24);
+  assert.equal(s['jürgen']['töö'].plaan, 16);
+  const vabaSeries = { ...master, id: 'vabae000', who: 'eike', type: 'vaba', start: '17:00', end: '21:00', repeat: { days: [2], until: null } };
+  const b = balanceOverWeeks([vabaSeries], '2026-09-06', 2, TODAY);
+  assert.equal(b.eike, 4); // only Tuesday 1.9; 25.8 is before the series start
+});
+
+test('eveningOverview sees series instances', () => {
+  const vabaSeries = { ...master, id: 'vabae000', who: 'eike', type: 'vaba', start: '17:00', end: '21:00', repeat: { days: [2], until: null } };
+  const o = eveningOverview([vabaSeries], weekDates('2026-09-06'), settings, TODAY);
+  assert.deepEqual(o[1].vaba, ['eike']);
+  assert.equal(o[0].empty, true);
+});
+
+test('applyPreset excludes a series instance that evening instead of deleting the master', () => {
+  const vabaSeries = { ...master, id: 'vabae000', who: 'eike', type: 'vaba', start: '17:00', end: '21:00', repeat: { days: [1, 2, 3, 4, 5], until: null } };
+  const out = applyPreset([vabaSeries], 'jürgen-vaba', '2026-09-02', settings, { now: NOW, today: TODAY });
+  const m = out.find((e) => e.id === 'vabae000');
+  assert.deepEqual(m.exdates, ['2026-09-02']);
+  const shown = expandEvents(out, ['2026-09-02'], TODAY);
+  assert.deepEqual(shown.map((e) => [e.who, e.type]).sort(), [['eike', 'laara'], ['jürgen', 'vaba']]);
+  assert.equal(expandEvents(out, ['2026-09-03'], TODAY).length, 1); // series continues next day
+});
+
+test('snap15 rounds to quarter hours', () => {
+  assert.equal(snap15(7), 0);
+  assert.equal(snap15(8), 15);
+  assert.equal(snap15(1042), 1035);
+});
+
+test('moveEvent shifts start/end keeping duration, clamped to day bounds', () => {
+  const e = { start: '17:00', end: '19:00' };
+  assert.deepEqual(moveEvent(e, 37, 7 * 60, 22 * 60), { start: '17:30', end: '19:30' });
+  assert.deepEqual(moveEvent(e, -700, 7 * 60, 22 * 60), { start: '07:00', end: '09:00' });
+  assert.deepEqual(moveEvent(e, 700, 7 * 60, 22 * 60), { start: '20:00', end: '22:00' });
+});
+
+test('resizeEvent changes end, minimum 15 minutes, clamped', () => {
+  const e = { start: '17:00', end: '19:00' };
+  assert.deepEqual(resizeEvent(e, 55, 22 * 60), { start: '17:00', end: '20:00' });
+  assert.deepEqual(resizeEvent(e, -300, 22 * 60), { start: '17:00', end: '17:15' });
+  assert.deepEqual(resizeEvent(e, 900, 22 * 60), { start: '17:00', end: '22:00' });
 });

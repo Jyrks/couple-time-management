@@ -97,38 +97,98 @@ export function applyPreset(events, key, date, settings, opts = {}) {
   const preset = presets(settings).find((p) => p.key === key);
   if (!preset) throw new Error(`unknown preset ${key}`);
   const eveningStart = toMinutes(settings.eveningStart || '17:00');
-  const kept = events.filter((ev) => !(ev.date === date && ev.type !== 'töö' && toMinutes(ev.start) >= eveningStart));
-  return sortEvents([...kept, ...preset.build(date, opts)]);
+  const isEvening = (ev) => ev.date === date && ev.type !== 'töö' && toMinutes(ev.start) >= eveningStart;
+  let out = events;
+  for (const inst of expandEvents(events, [date], opts.today)) {
+    if (!isEvening(inst)) continue;
+    if (inst.virtual) out = excludeDate(out, inst.seriesId, date, opts.now);
+    else out = out.filter((ev) => ev.id !== inst.id);
+  }
+  return sortEvents([...out, ...preset.build(date, opts)]);
 }
 
-export function fillWork(events, dates, settings, now, today = todayStr()) {
-  const added = [];
-  for (const date of dates) {
-    const dow = dayOfWeek(date);
-    const status = date < today ? 'tehtud' : 'plaan';
-    for (const p of PERSONS) {
-      const w = settings.work?.[p];
-      if (!w || !w.days.includes(dow)) continue;
-      const has = events.some((ev) => ev.date === date && ev.type === 'töö' && (ev.who === p || ev.who === 'both'));
-      if (!has) added.push(makeEvent(date, w.start, w.end, p, 'töö', { now, status }));
+// ---------- series ----------
+// A master event with `repeat: { days: [1..7], until }` is never shown itself; expandEvents
+// turns it into one virtual instance per matching date. `exdates` skips dates. An override is
+// a normal event with `seriesId` + `origDate` that replaces the virtual instance for that date.
+
+function instanceStatus(date, today) {
+  return date < today ? 'tehtud' : 'plaan';
+}
+
+export function expandEvents(events, dates, today = todayStr()) {
+  const overrides = new Set(events.filter((e) => e.seriesId && e.origDate).map((e) => `${e.seriesId}@${e.origDate}`));
+  const dateSet = new Set(dates);
+  const out = [];
+  for (const ev of events) {
+    if (!ev.repeat) {
+      if (dateSet.has(ev.date)) out.push(ev);
+      continue;
+    }
+    const ex = new Set(ev.exdates || []);
+    for (const d of dates) {
+      if (d < ev.date) continue;
+      if (ev.repeat.until && d > ev.repeat.until) continue;
+      if (!ev.repeat.days.includes(dayOfWeek(d))) continue;
+      if (ex.has(d) || overrides.has(`${ev.id}@${d}`)) continue;
+      const { repeat, exdates, ...rest } = ev;
+      out.push({ ...rest, id: `${ev.id}@${d}`, date: d, seriesId: ev.id, origDate: d, virtual: true, status: instanceStatus(d, today) });
     }
   }
-  return added.length ? sortEvents([...events, ...added]) : events;
+  return sortEvents(out);
+}
+
+export function excludeDate(events, masterId, date, now = new Date().toISOString()) {
+  return events
+    .filter((ev) => !(ev.seriesId === masterId && ev.origDate === date))
+    .map((ev) => (ev.id === masterId
+      ? { ...ev, exdates: [...new Set([...(ev.exdates || []), date])].sort(), updated: now }
+      : ev));
+}
+
+export function detachInstance(events, instance, changes, now = new Date().toISOString()) {
+  const { virtual, ...base } = instance;
+  const override = { ...base, ...changes, id: newId(), seriesId: instance.seriesId, origDate: instance.origDate, updated: now };
+  delete override.repeat;
+  delete override.exdates;
+  return sortEvents([...events, override]);
+}
+
+export function deleteSeries(events, masterId) {
+  return events.filter((ev) => ev.id !== masterId && ev.seriesId !== masterId);
+}
+
+// ---------- drag math ----------
+export function snap15(min) {
+  return Math.round(min / 15) * 15;
+}
+
+export function moveEvent(ev, deltaMin, dayStartMin, dayEndMin) {
+  const dur = toMinutes(ev.end) - toMinutes(ev.start);
+  let start = snap15(toMinutes(ev.start) + deltaMin);
+  start = Math.max(dayStartMin, Math.min(dayEndMin - dur, start));
+  return { start: fromMinutes(start), end: fromMinutes(start + dur) };
+}
+
+export function resizeEvent(ev, deltaMin, dayEndMin) {
+  const startMin = toMinutes(ev.start);
+  let end = snap15(toMinutes(ev.end) + deltaMin);
+  end = Math.max(startMin + 15, Math.min(dayEndMin, end));
+  return { start: ev.start, end: fromMinutes(end) };
 }
 
 function personsOf(ev) {
   return ev.who === 'both' ? PERSONS : [ev.who];
 }
 
-export function summarize(events, dates) {
-  const set = new Set(dates);
+export function summarize(events, dates, today = todayStr()) {
   const out = {};
   for (const p of PERSONS) {
     out[p] = {};
     for (const t of TYPES) out[p][t] = { plaan: 0, tehtud: 0 };
   }
-  for (const ev of events) {
-    if (!set.has(ev.date) || !TYPES.includes(ev.type)) continue;
+  for (const ev of expandEvents(events, dates, today)) {
+    if (!TYPES.includes(ev.type)) continue;
     const h = durationHours(ev);
     for (const p of personsOf(ev)) {
       if (out[p]) out[p][ev.type][ev.status === 'tehtud' ? 'tehtud' : 'plaan'] += h;
@@ -137,22 +197,23 @@ export function summarize(events, dates) {
   return out;
 }
 
-export function balanceOverWeeks(events, weekStartStr, n = 4) {
+export function balanceOverWeeks(events, weekStartStr, n = 4, today = todayStr()) {
   const first = addDays(weekStart(weekStartStr), -7 * (n - 1));
-  const last = addDays(weekStart(weekStartStr), 6);
+  const dates = Array.from({ length: 7 * n }, (_, i) => addDays(first, i));
   const out = { 'jürgen': 0, eike: 0 };
-  for (const ev of events) {
-    if (ev.type !== 'vaba' || ev.date < first || ev.date > last) continue;
+  for (const ev of expandEvents(events, dates, today)) {
+    if (ev.type !== 'vaba') continue;
     for (const p of personsOf(ev)) if (p in out) out[p] += durationHours(ev);
   }
   out.diff = out['jürgen'] - out.eike;
   return out;
 }
 
-export function eveningOverview(events, dates, settings) {
+export function eveningOverview(events, dates, settings, today = todayStr()) {
   const eveningStart = toMinutes(settings.eveningStart || '17:00');
+  const expanded = expandEvents(events, dates, today);
   return dates.map((date) => {
-    const evs = events.filter((ev) => ev.date === date && ev.type !== 'töö' && toMinutes(ev.start) >= eveningStart);
+    const evs = expanded.filter((ev) => ev.date === date && ev.type !== 'töö' && toMinutes(ev.start) >= eveningStart);
     const laara = [], vaba = [];
     let koos = false, note = '';
     for (const ev of evs) {
