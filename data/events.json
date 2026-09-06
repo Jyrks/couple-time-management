@@ -29,5 +29,17 @@
     },
     "sitters": []
   },
-  "events": []
+  "events": [
+    {
+      "id": "ilepjf1q",
+      "date": "2026-08-31",
+      "start": "09:00",
+      "end": "17:00",
+      "who": "jürgen",
+      "type": "töö",
+      "status": "tehtud",
+      "note": "",
+      "updated": "2026-09-06T14:04:14.681Z"
+    }
+  ]
 }
