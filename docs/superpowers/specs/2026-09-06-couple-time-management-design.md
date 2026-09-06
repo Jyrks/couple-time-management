@@ -127,6 +127,23 @@ Fields:
 Times are local wall-clock strings; the app assumes both users are in the same
 time zone. Events do not cross midnight.
 
+### Recurring events (added 2026-09-06)
+
+A master event may carry `repeat: { days: [1..7], until: 'YYYY-MM-DD' | null }` and
+`exdates: [...]`. Masters are never shown directly; `expandEvents` produces one virtual
+instance per matching date from `date` onward (id `<masterId>@<date>`). Past instances
+count as `tehtud`, future as `plaan`. An override is a plain event with `seriesId` and
+`origDate` that replaces the virtual instance for that date. Editing or dragging an
+instance with scope "Ainult see päev" creates an override; "Kogu seeria" edits the master.
+Deleting with "Ainult see päev" adds the date to `exdates`. Two recurring `töö` events
+(Mon–Fri 09–17, both persons) are seeded; `Täida töö` was removed.
+
+### Drag (added 2026-09-06)
+
+Mouse: drag an event body to move (15-minute snap, across days and lanes), drag its bottom
+edge to change the end time. Touch: hold about 400 ms, then drag to move; a plain swipe
+scrolls. Drop saves immediately.
+
 ## Persistence
 
 - Read: `GET /repos/Jyrks/couple-time-management/contents/data/events.json`

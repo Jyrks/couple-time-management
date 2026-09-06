@@ -1,7 +1,8 @@
 import { T } from './i18n.et.js';
 import {
   PERSONS, TYPES, todayStr, weekStart, addDays, weekDates, toMinutes, fromMinutes, newId,
-  sortEvents, presets, applyPreset, fillWork, summarize, balanceOverWeeks, eveningOverview, mergeEvents,
+  sortEvents, presets, applyPreset, summarize, balanceOverWeeks, eveningOverview, mergeEvents,
+  expandEvents, excludeDate, detachInstance, deleteSeries, moveEvent, resizeEvent,
 } from './logic.js';
 import { unlock, normalizeUser } from './crypto.js';
 import { GitHubStore, GitHubError } from './github.js';
@@ -182,9 +183,13 @@ function attachSwipe(el) {
 }
 
 // ---------- week view ----------
+let dragEndedAt = 0;
+const recentlyDragged = () => Date.now() - dragEndedAt < 400;
+
 function renderWeek() {
   const dates = weekDates(state.week);
   const today = todayStr();
+  const instances = expandEvents(state.data.events, dates, today);
   const heads = dates.map((d, i) => h('button', { class: 'dayhead' + (d === today ? ' today' : ''), onclick: () => openPresets(d) },
     h('span', { class: 'dow' }, T.days[i]),
     h('span', { class: 'dom' }, String(Number(d.slice(8)))),
@@ -197,12 +202,13 @@ function renderWeek() {
   const cols = dates.map((d) => {
     const col = h('div', {
       class: 'daycol' + (d === today ? ' today' : ''),
+      'data-date': d,
       style: `height:${(DAY_END - DAY_START) * HOUR_PX}px`,
-      onclick: (ev) => onSlotClick(ev, d),
+      onclick: (ev) => { if (!recentlyDragged()) onSlotClick(ev, d); },
     });
     for (let hr = DAY_START; hr < DAY_END; hr++) col.append(h('div', { class: 'gridline', style: `top:${(hr - DAY_START) * HOUR_PX}px` }));
     col.append(h('div', { class: 'lanesep' }));
-    for (const e of state.data.events) if (e.date === d) col.append(renderEvent(e));
+    for (const e of instances) if (e.date === d) col.append(renderEvent(e));
     if (d === today) {
       const now = new Date();
       const m = now.getHours() * 60 + now.getMinutes();
@@ -212,29 +218,43 @@ function renderWeek() {
   });
   const grid = h('div', { class: 'grid' }, h('div', { class: 'timecol' }, ...hours), ...cols);
   attachSwipe(grid);
+  attachDrag(grid, instances);
 
   return h('section', { class: 'week' },
     weekHeader(),
     h('div', { class: 'actions' },
-      h('button', { onclick: onFillWork }, T.fillWork),
+      h('span', { class: 'hint draghint' }, T.dragHint),
       h('div', { class: 'legend' }, ...TYPES.map((t) => h('span', { class: `lg type-${TYPE_CLASS[t]}` }, T.types[t])))),
     h('div', { class: 'heads' }, h('div', { class: 'corner' }), ...heads),
     grid);
 }
 
-function renderEvent(e) {
+function eventGeometry(e) {
   const startMin = Math.max(toMinutes(e.start), DAY_START * 60);
   const endMin = Math.min(toMinutes(e.end), DAY_END * 60);
-  if (endMin <= startMin) return h('span');
   const top = (startMin - DAY_START * 60) / 60 * HOUR_PX;
   const height = Math.max(14, (endMin - startMin) / 60 * HOUR_PX);
-  const lane = e.who === 'both' ? 'both' : e.who === 'jürgen' ? 'j' : 'e';
+  return { top, height, visible: endMin > startMin };
+}
+
+function laneClass(who) {
+  return who === 'both' ? 'lane-both' : who === 'jürgen' ? 'lane-j' : 'lane-e';
+}
+
+function renderEvent(e) {
+  const g = eventGeometry(e);
+  if (!g.visible) return h('span');
+  const label = `${T.types[e.type] || e.type}${e.note ? ' · ' + e.note : ''}`;
   return h('div', {
-    class: `ev lane-${lane} ${e.status === 'tehtud' ? 'tehtud' : 'plaan'} type-${TYPE_CLASS[e.type] || 'muu'}`,
-    style: `top:${top}px;height:${height - 2}px`,
-    title: `${e.start}–${e.end} ${T.types[e.type] || e.type}${e.note ? ' · ' + e.note : ''}`,
-    onclick: (ev) => { ev.stopPropagation(); openEditor({ ...e }, false); },
-  }, h('span', { class: 'evlabel' }, `${T.types[e.type] || e.type}${e.note ? ' · ' + e.note : ''}`));
+    class: `ev ${laneClass(e.who)} ${e.status === 'tehtud' ? 'tehtud' : 'plaan'} type-${TYPE_CLASS[e.type] || 'muu'}${e.seriesId ? ' series' : ''}`,
+    style: `top:${g.top}px;height:${g.height - 2}px`,
+    'data-id': e.id,
+    title: `${e.start}–${e.end} ${label}`,
+    onclick: (ev) => { ev.stopPropagation(); if (!recentlyDragged()) openEditor({ ...e }, false); },
+  },
+  h('span', { class: 'evlabel' }, e.seriesId ? '↻ ' : '', label),
+  h('span', { class: 'evtime' }, `${e.start}–${e.end}`),
+  h('span', { class: 'ev-resize' }));
 }
 
 function onSlotClick(ev, date) {
@@ -250,16 +270,135 @@ function onSlotClick(ev, date) {
   }, true);
 }
 
-async function onFillWork() {
-  const before = state.data.events.length;
-  state.data.events = fillWork(state.data.events, weekDates(state.week), state.data.settings, new Date().toISOString(), todayStr());
-  if (state.data.events.length === before) return;
+// ---------- drag to move / resize ----------
+// Mouse: press and move. Touch: hold ~400 ms, then move (a plain swipe keeps scrolling).
+function attachDrag(grid, instances) {
+  const byId = new Map(instances.map((i) => [i.id, i]));
+  let drag = null;
+  let holdTimer = null;
+
+  const begin = (target, x, y) => {
+    const el = target.closest('.ev');
+    if (!el) return false;
+    const inst = byId.get(el.dataset.id);
+    if (!inst) return false;
+    drag = {
+      inst, el, x0: x, y0: y, active: false, moved: false,
+      mode: target.classList.contains('ev-resize') ? 'resize' : 'move',
+      cur: { date: inst.date, who: inst.who, start: inst.start, end: inst.end },
+    };
+    return true;
+  };
+
+  const activate = () => {
+    if (!drag || drag.active) return;
+    drag.active = true;
+    drag.el.classList.add('dragging');
+    if (navigator.vibrate) navigator.vibrate(10);
+  };
+
+  const update = (x, y) => {
+    if (!drag || !drag.active) return;
+    const deltaMin = (y - drag.y0) / HOUR_PX * 60;
+    const times = drag.mode === 'resize'
+      ? resizeEvent(drag.inst, deltaMin, DAY_END * 60)
+      : moveEvent(drag.inst, deltaMin, DAY_START * 60, DAY_END * 60);
+    let { date, who } = drag.cur;
+    if (drag.mode === 'move') {
+      const col = [...grid.querySelectorAll('.daycol')].find((c) => { const r = c.getBoundingClientRect(); return x >= r.left && x < r.right; });
+      if (col) {
+        date = col.dataset.date;
+        if (drag.inst.who !== 'both') {
+          const r = col.getBoundingClientRect();
+          who = x < r.left + r.width / 2 ? 'jürgen' : 'eike';
+        }
+        if (col !== drag.el.parentElement) col.append(drag.el);
+      }
+    }
+    drag.cur = { date, who, ...times };
+    drag.moved = true;
+    const g = eventGeometry(drag.cur);
+    drag.el.style.top = `${g.top}px`;
+    drag.el.style.height = `${g.height - 2}px`;
+    drag.el.classList.remove('lane-j', 'lane-e', 'lane-both');
+    drag.el.classList.add(laneClass(who));
+    drag.el.querySelector('.evtime').textContent = `${times.start}–${times.end}`;
+  };
+
+  const end = async () => {
+    clearTimeout(holdTimer);
+    holdTimer = null;
+    if (!drag) return;
+    const d = drag;
+    drag = null;
+    if (!d.active) return;
+    dragEndedAt = Date.now();
+    const changed = d.moved && (d.cur.date !== d.inst.date || d.cur.who !== d.inst.who || d.cur.start !== d.inst.start || d.cur.end !== d.inst.end);
+    if (!changed) { render(); return; }
+    await commitInstanceChange(d.inst, d.cur, 'day');
+  };
+
+  // mouse
+  grid.addEventListener('mousedown', (e) => {
+    if (e.button !== 0 || !begin(e.target, e.clientX, e.clientY)) return;
+    e.preventDefault();
+    const onMove = (m) => {
+      if (!drag) return;
+      if (!drag.active && Math.hypot(m.clientX - drag.x0, m.clientY - drag.y0) > 4) activate();
+      update(m.clientX, m.clientY);
+    };
+    const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); end(); };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  });
+
+  // touch
+  grid.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    if (!begin(e.target, t.clientX, t.clientY)) return;
+    holdTimer = setTimeout(activate, 400);
+  }, { passive: true });
+  grid.addEventListener('touchmove', (e) => {
+    if (!drag) return;
+    const t = e.touches[0];
+    if (!drag.active) {
+      if (Math.hypot(t.clientX - drag.x0, t.clientY - drag.y0) > 10) { clearTimeout(holdTimer); drag = null; }
+      return;
+    }
+    e.preventDefault();
+    update(t.clientX, t.clientY);
+  }, { passive: false });
+  grid.addEventListener('touchend', (e) => {
+    if (drag && drag.active) e.preventDefault();
+    end();
+  }, { passive: false });
+  grid.addEventListener('touchcancel', () => { clearTimeout(holdTimer); if (drag && drag.active) render(); drag = null; });
+}
+
+// Apply {date, who, start, end, ...} to an instance. scope 'day' detaches a series instance
+// into an override; scope 'series' edits the master.
+async function commitInstanceChange(inst, changes, scope) {
+  const now = new Date().toISOString();
+  if (inst.virtual && scope === 'day') {
+    state.data.events = detachInstance(state.data.events, inst, changes, now);
+  } else if (inst.seriesId && scope === 'series') {
+    const { date, status, ...seriesChanges } = changes;
+    state.data.events = state.data.events.map((e) => (e.id === inst.seriesId ? { ...e, ...seriesChanges, updated: now } : e));
+  } else {
+    const updated = { ...inst, ...changes, updated: now };
+    delete updated.virtual;
+    const i = state.data.events.findIndex((e) => e.id === inst.id);
+    if (i >= 0) state.data.events[i] = updated; else state.data.events.push(updated);
+    state.data.events = sortEvents(state.data.events);
+  }
   render();
-  await save(`täitis tööajad ${state.week}`);
+  const who = T.persons[changes.who || inst.who];
+  await save(`${changes.date || inst.date} ${T.types[changes.type || inst.type]} ${changes.start || inst.start}–${changes.end || inst.end} (${who})`);
 }
 
 // ---------- sheets ----------
-function openEditor(ev, isNew) { state.sheet = { kind: 'editor', ev, isNew }; render(); }
+function openEditor(ev, isNew) { state.sheet = { kind: 'editor', ev, isNew, scope: 'day' }; render(); }
 function openPresets(date) {
   state.sheet = { kind: 'presets', date, sitter: (state.data.settings.sitters || [])[0] || '' };
   render();
@@ -276,10 +415,52 @@ function select(name, opts, value) {
   return h('select', { name }, ...opts.map(([v, l]) => h('option', { value: v, selected: v === value }, l)));
 }
 
-function renderEditor({ ev, isNew }) {
-  const f = h('form', { class: 'editor', onsubmit: (e) => { e.preventDefault(); submitEditor(f, ev); } },
+function renderEditor(sheet) {
+  const { ev, isNew } = sheet;
+  const master = ev.seriesId ? state.data.events.find((e) => e.id === ev.seriesId) : null;
+  const inSeries = Boolean(master);
+  const seriesMode = () => inSeries && sheet.scope === 'series';
+  const repeatSource = seriesMode() ? master : ev;
+  const repeatDays = repeatSource.repeat?.days || [];
+  const repeatUntil = repeatSource.repeat?.until || '';
+
+  const dayChips = T.days.map((d, i) => h('label', { class: 'chip' },
+    h('input', { type: 'checkbox', name: `rep-${i + 1}`, checked: repeatDays.includes(i + 1) }), d));
+  const repeatRow = h('div', { class: 'repeat' },
+    h('div', { class: 'row', style: 'align-items:center;justify-content:space-between' },
+      h('span', { class: 'hint' }, T.editor.repeat),
+      h('button', { type: 'button', class: 'small', onclick: () => { for (let i = 1; i <= 7; i++) f.elements[`rep-${i}`].checked = i <= 5; } }, T.editor.workdays)),
+    h('div', { class: 'days' }, ...dayChips),
+    h('label', {}, T.editor.until, h('input', { name: 'until', type: 'date', value: repeatUntil })));
+
+  const dateLabel = h('label', {}, T.editor.date, h('input', { name: 'date', type: 'date', value: ev.date, required: true }));
+  const doneLabel = h('label', { class: 'check' }, h('input', { name: 'done', type: 'checkbox', checked: ev.status === 'tehtud' }), T.editor.done);
+
+  const applyScopeVisibility = () => {
+    const series = seriesMode();
+    repeatRow.hidden = inSeries && !series;
+    dateLabel.hidden = series;
+    doneLabel.hidden = series;
+    if (series) {
+      for (let i = 1; i <= 7; i++) f.elements[`rep-${i}`].checked = (master.repeat?.days || []).includes(i);
+      f.elements.until.value = master.repeat?.until || '';
+      f.elements.start.value = master.start; f.elements.end.value = master.end;
+      f.elements.who.value = master.who; f.elements.type.value = master.type; f.elements.note.value = master.note || '';
+    } else {
+      f.elements.start.value = ev.start; f.elements.end.value = ev.end;
+      f.elements.who.value = ev.who; f.elements.type.value = ev.type; f.elements.note.value = ev.note || '';
+    }
+  };
+
+  const scopeRow = inSeries ? h('div', { class: 'scope' },
+    h('p', { class: 'hint' }, T.editor.seriesHint),
+    h('label', { class: 'chip' }, h('input', { type: 'radio', name: 'scope', value: 'day', checked: sheet.scope === 'day', onchange: () => { sheet.scope = 'day'; applyScopeVisibility(); } }), T.editor.scopeDay),
+    h('label', { class: 'chip' }, h('input', { type: 'radio', name: 'scope', value: 'series', checked: sheet.scope === 'series', onchange: () => { sheet.scope = 'series'; applyScopeVisibility(); } }), T.editor.scopeSeries)) : null;
+
+  const f = h('form', { class: 'editor', onsubmit: (e) => { e.preventDefault(); submitEditor(f, ev, isNew, inSeries ? sheet.scope : 'day', master); } },
     h('h2', {}, isNew ? T.editor.new : T.editor.edit),
-    h('label', {}, T.editor.date, h('input', { name: 'date', type: 'date', value: ev.date, required: true })),
+    scopeRow,
+    dateLabel,
     h('div', { class: 'row' },
       h('label', {}, T.editor.start, h('input', { name: 'start', type: 'time', step: 900, value: ev.start, required: true })),
       h('label', {}, T.editor.end, h('input', { name: 'end', type: 'time', step: 900, value: ev.end, required: true }))),
@@ -287,32 +468,70 @@ function renderEditor({ ev, isNew }) {
     h('label', {}, T.editor.type, select('type', TYPES.map((t) => [t, T.types[t]]), ev.type)),
     h('label', {}, T.editor.note, h('input', { name: 'note', value: ev.note || '', list: 'sitters' }),
       h('datalist', { id: 'sitters' }, ...(state.data.settings.sitters || []).map((n) => h('option', { value: n })))),
-    h('label', { class: 'check' }, h('input', { name: 'done', type: 'checkbox', checked: ev.status === 'tehtud' }), T.editor.done),
+    doneLabel,
+    repeatRow,
     h('p', { class: 'error', 'data-err': true }),
     h('div', { class: 'btns' },
-      isNew ? null : h('button', { type: 'button', class: 'danger', onclick: () => deleteEvent(ev) }, T.editor.delete),
+      isNew ? null : h('button', { type: 'button', class: 'danger', onclick: () => deleteFromEditor(ev, inSeries ? sheet.scope : 'day', master) }, T.editor.delete),
       h('button', { type: 'button', onclick: closeSheet }, T.editor.cancel),
       h('button', { type: 'submit', class: 'primary' }, T.editor.save)));
+  applyScopeVisibility();
   return f;
 }
 
-async function submitEditor(f, orig) {
-  const ev = {
-    ...orig,
-    date: f.date.value, start: f.start.value, end: f.end.value, who: f.who.value, type: f.type.value,
-    note: f.note.value.trim(), status: f.done.checked ? 'tehtud' : 'plaan', updated: new Date().toISOString(),
-  };
-  if (toMinutes(ev.end) <= toMinutes(ev.start)) { f.querySelector('[data-err]').textContent = T.editor.endBeforeStart; return; }
-  const i = state.data.events.findIndex((e) => e.id === ev.id);
-  if (i >= 0) state.data.events[i] = ev; else state.data.events.push(ev);
-  state.data.events = sortEvents(state.data.events);
-  closeSheet();
-  await save(`${ev.date} ${T.types[ev.type]} ${ev.start}–${ev.end} (${T.persons[ev.who]})`);
+function readRepeat(f) {
+  const days = [];
+  for (let i = 1; i <= 7; i++) if (f.elements[`rep-${i}`].checked) days.push(i);
+  if (!days.length) return null;
+  return { days, until: f.elements.until.value || null };
 }
 
-async function deleteEvent(ev) {
-  state.data.events = state.data.events.filter((e) => e.id !== ev.id);
-  state.pendingDeletes.add(ev.id);
+async function submitEditor(f, orig, isNew, scope, master) {
+  if (toMinutes(f.end.value) <= toMinutes(f.start.value)) { f.querySelector('[data-err]').textContent = T.editor.endBeforeStart; return; }
+  const now = new Date().toISOString();
+  const fields = { start: f.start.value, end: f.end.value, who: f.who.value, type: f.type.value, note: f.note.value.trim() };
+
+  if (master && scope === 'series') {
+    const repeat = readRepeat(f);
+    state.data.events = state.data.events.map((e) => (e.id === master.id
+      ? (repeat ? { ...e, ...fields, repeat, updated: now } : { ...e, ...fields, repeat: undefined, exdates: undefined, updated: now })
+      : e));
+    closeSheet();
+    await save(`seeria ${T.types[fields.type]} ${fields.start}–${fields.end} (${T.persons[fields.who]})`);
+    return;
+  }
+
+  const changes = { ...fields, date: f.date.value, status: f.done.checked ? 'tehtud' : 'plaan' };
+  if (orig.virtual) {
+    state.data.events = detachInstance(state.data.events, orig, changes, now);
+  } else {
+    const repeat = master ? undefined : readRepeat(f);
+    const ev = { ...orig, ...changes, updated: now };
+    if (repeat) { ev.repeat = repeat; ev.exdates = orig.exdates || []; } else { delete ev.repeat; delete ev.exdates; }
+    const i = state.data.events.findIndex((e) => e.id === ev.id);
+    if (i >= 0) state.data.events[i] = ev; else state.data.events.push(ev);
+    state.data.events = sortEvents(state.data.events);
+  }
+  closeSheet();
+  await save(`${changes.date} ${T.types[changes.type]} ${changes.start}–${changes.end} (${T.persons[changes.who]})`);
+}
+
+async function deleteFromEditor(ev, scope, master) {
+  const now = new Date().toISOString();
+  if (master && scope === 'series') {
+    state.data.events = deleteSeries(state.data.events, master.id);
+    closeSheet();
+    await save(`kustutas seeria ${T.types[master.type]} ${master.start}–${master.end}`);
+    return;
+  }
+  if (ev.seriesId && master) {
+    // virtual instance or override: hide this date from the series
+    state.data.events = excludeDate(state.data.events, master.id, ev.origDate || ev.date, now);
+    if (!ev.virtual) state.pendingDeletes.add(ev.id);
+  } else {
+    state.data.events = state.data.events.filter((e) => e.id !== ev.id);
+    state.pendingDeletes.add(ev.id);
+  }
   closeSheet();
   await save(`kustutas ${ev.date} ${T.types[ev.type]} ${ev.start}–${ev.end}`);
 }
@@ -333,8 +552,9 @@ function renderPresetSheet(s) {
 }
 
 async function applyPresetClick(key, s) {
-  const status = s.date < todayStr() ? 'tehtud' : 'plaan';
-  state.data.events = applyPreset(state.data.events, key, s.date, state.data.settings, { sitter: s.sitter, status, now: new Date().toISOString() });
+  const today = todayStr();
+  const status = s.date < today ? 'tehtud' : 'plaan';
+  state.data.events = applyPreset(state.data.events, key, s.date, state.data.settings, { sitter: s.sitter, status, now: new Date().toISOString(), today });
   closeSheet();
   await save(`${s.date} ${T.presets[key]}`);
 }

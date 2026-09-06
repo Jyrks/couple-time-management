@@ -16,7 +16,7 @@ export const T = {
   expired: 'Ligipääs aegunud, uuenda seadistust (setup.html)',
   tabs: { week: 'Nädal', review: 'Ülevaade', settings: 'Seaded' },
   today: 'Täna',
-  fillWork: 'Täida töö',
+  dragHint: 'Hoia sündmusel sõrme all ja lohista',
   persons: { 'jürgen': 'Jürgen', 'eike': 'Eike', both: 'Mõlemad' },
   personShort: { 'jürgen': 'J', 'eike': 'E', both: 'J+E' },
   types: { 'töö': 'Töö', 'vaba': 'Vaba aeg', 'laara': 'Laaraga', 'koos': 'Koos', 'muu': 'Muu' },
@@ -27,6 +27,8 @@ export const T = {
     new: 'Uus sündmus', edit: 'Muuda sündmust', date: 'Kuupäev', start: 'Algus', end: 'Lõpp',
     who: 'Kes', type: 'Tüüp', note: 'Märkus', done: 'Tehtud', save: 'Salvesta',
     delete: 'Kustuta', cancel: 'Sulge', endBeforeStart: 'Lõpp peab olema pärast algust',
+    repeat: 'Kordub', repeatNone: 'Ei kordu', workdays: 'Iga tööpäev', until: 'Kuni (valikuline)',
+    scopeDay: 'Ainult see päev', scopeSeries: 'Kogu seeria', seriesHint: 'See sündmus on osa seeriast.',
   },
   presets: {
     title: 'Õhtu kiirvalik', sitter: 'Hoidja',
