@@ -7,5 +7,5 @@ Week planner for Jürgen and Eike. Static site on GitHub Pages, data stored in
 - First-time setup: open `/setup.html`, paste a fine-grained PAT (this repo only,
   Contents: read/write) and both passwords. The PAT is stored encrypted in
   `config.json`.
-- Tests: `node --test test/`
+- Tests: `node --test test/*.test.js`
 - Local dev: `python3 -m http.server 8080` then open http://localhost:8080/
