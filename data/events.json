@@ -75,17 +75,6 @@
       "exdates": []
     },
     {
-      "id": "8d4flq8w",
-      "date": "2026-09-14",
-      "start": "17:00",
-      "end": "20:15",
-      "who": "eike",
-      "type": "vaba",
-      "status": "tehtud",
-      "note": "",
-      "updated": "2026-09-15T10:31:44.254Z"
-    },
-    {
       "id": "opxa2v14",
       "date": "2026-09-14",
       "start": "17:30",
@@ -95,6 +84,17 @@
       "status": "tehtud",
       "note": "",
       "updated": "2026-09-15T10:32:04.534Z"
+    },
+    {
+      "id": "8d4flq8w",
+      "date": "2026-09-14",
+      "start": "17:30",
+      "end": "20:45",
+      "who": "eike",
+      "type": "vaba",
+      "status": "tehtud",
+      "note": "",
+      "updated": "2026-09-15T10:32:08.995Z"
     },
     {
       "id": "9fsczhh3",
