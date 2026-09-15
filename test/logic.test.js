@@ -21,7 +21,7 @@ const ev = (o) => ({ id: newId(), status: 'plaan', note: '', updated: NOW, ...o 
 
 test('constants', () => {
   assert.deepEqual(PERSONS, ['jürgen', 'eike']);
-  assert.deepEqual(TYPES, ['töö', 'vaba', 'laara', 'koos', 'muu']);
+  assert.deepEqual(TYPES, ['töö', 'vaba', 'laara', 'koos']);
 });
 
 test('todayStr uses local date', () => {
@@ -67,9 +67,9 @@ test('newId is 8 base36 chars and unique', () => {
 });
 
 test('sortEvents by date, start, who', () => {
-  const a = ev({ date: '2026-09-02', start: '09:00', end: '10:00', who: 'eike', type: 'muu' });
-  const b = ev({ date: '2026-09-01', start: '18:00', end: '19:00', who: 'jürgen', type: 'muu' });
-  const c = ev({ date: '2026-09-01', start: '09:00', end: '10:00', who: 'jürgen', type: 'muu' });
+  const a = ev({ date: '2026-09-02', start: '09:00', end: '10:00', who: 'eike', type: 'vaba' });
+  const b = ev({ date: '2026-09-01', start: '18:00', end: '19:00', who: 'jürgen', type: 'vaba' });
+  const c = ev({ date: '2026-09-01', start: '09:00', end: '10:00', who: 'jürgen', type: 'vaba' });
   assert.deepEqual(sortEvents([a, b, c]).map((e) => e.id), [c.id, b.id, a.id]);
 });
 
@@ -182,9 +182,9 @@ test('eveningOverview reports who had Laara, who was free, koos', () => {
 test('mergeEvents: newest updated wins, pending deletes stay deleted, remote-only kept', () => {
   const a1 = ev({ id: 'a', date: '2026-09-01', start: '17:00', end: '18:00', who: 'eike', type: 'vaba', updated: '2026-09-06T10:00:00Z' });
   const a2 = { ...a1, end: '19:00', updated: '2026-09-06T11:00:00Z' };
-  const b = ev({ id: 'b', date: '2026-09-01', start: '09:00', end: '10:00', who: 'jürgen', type: 'muu' });
-  const c = ev({ id: 'c', date: '2026-09-02', start: '09:00', end: '10:00', who: 'jürgen', type: 'muu' });
-  const d = ev({ id: 'd', date: '2026-09-03', start: '09:00', end: '10:00', who: 'jürgen', type: 'muu' });
+  const b = ev({ id: 'b', date: '2026-09-01', start: '09:00', end: '10:00', who: 'jürgen', type: 'vaba' });
+  const c = ev({ id: 'c', date: '2026-09-02', start: '09:00', end: '10:00', who: 'jürgen', type: 'vaba' });
+  const d = ev({ id: 'd', date: '2026-09-03', start: '09:00', end: '10:00', who: 'jürgen', type: 'vaba' });
   const remote = [a1, b, c];
   const local = [a2, c, d];
   const out = mergeEvents(remote, local, new Set(['b']));

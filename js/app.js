@@ -14,7 +14,7 @@ const SESSION_KEY = 'meieaeg.session';
 const DAY_START = 7;
 const DAY_END = 22;
 const HOUR_PX = 48;
-const TYPE_CLASS = { 'töö': 'work', vaba: 'free', laara: 'laara', koos: 'koos', muu: 'muu' };
+const TYPE_CLASS = { 'töö': 'work', vaba: 'free', laara: 'laara', koos: 'koos' };
 
 const state = {
   user: null, token: null, store: null, data: null, sha: null,
@@ -246,7 +246,7 @@ function renderEvent(e) {
   if (!g.visible) return h('span');
   const label = `${T.types[e.type] || e.type}${e.note ? ' · ' + e.note : ''}`;
   return h('div', {
-    class: `ev ${laneClass(e.who)} ${e.status === 'tehtud' ? 'tehtud' : 'plaan'} type-${TYPE_CLASS[e.type] || 'muu'}${e.seriesId ? ' series' : ''}`,
+    class: `ev ${laneClass(e.who)} ${e.status === 'tehtud' ? 'tehtud' : 'plaan'} type-${TYPE_CLASS[e.type] || 'work'}${e.seriesId ? ' series' : ''}`,
     style: `top:${g.top}px;height:${g.height - 2}px`,
     'data-id': e.id,
     title: `${e.start}–${e.end} ${label}`,
@@ -266,7 +266,7 @@ function onSlotClick(ev, date) {
   const evening = hour * 60 >= toMinutes(state.data.settings.eveningStart || '17:00');
   openEditor({
     id: newId(), date, start: fromMinutes(hour * 60), end: fromMinutes(Math.min(hour + 1, DAY_END) * 60),
-    who, type: evening ? 'vaba' : 'muu', status: date < todayStr() ? 'tehtud' : 'plaan', note: '',
+    who, type: evening ? 'vaba' : 'töö', status: date < todayStr() ? 'tehtud' : 'plaan', note: '',
   }, true);
 }
 
@@ -300,7 +300,7 @@ function attachDrag(grid, instances) {
     const rect = col.getBoundingClientRect();
     const anchorMin = minuteAt(col, y);
     const who = x < rect.left + rect.width / 2 ? 'jürgen' : 'eike';
-    const type = anchorMin >= toMinutes(state.data.settings.eveningStart || '17:00') ? 'vaba' : 'muu';
+    const type = anchorMin >= toMinutes(state.data.settings.eveningStart || '17:00') ? 'vaba' : 'töö';
     drag = {
       mode: 'create', col, anchorMin, who, type, date: col.dataset.date,
       x0: x, y0: y, active: false, moved: false,
@@ -460,6 +460,14 @@ function select(name, opts, value) {
   return h('select', { name }, ...opts.map(([v, l]) => h('option', { value: v, selected: v === value }, l)));
 }
 
+// Radios named "type" behave like the old <select> for form.elements.type.value,
+// so reading and setting the chosen type is unchanged.
+function typeChips(value) {
+  return h('div', { class: 'types' }, ...TYPES.map((t) => h('label', { class: 'typeopt' },
+    h('input', { type: 'radio', name: 'type', value: t, checked: t === value }),
+    h('span', { class: `chip type-${TYPE_CLASS[t]}` }, T.types[t]))));
+}
+
 function renderEditor(sheet) {
   const { ev, isNew } = sheet;
   const master = ev.seriesId ? state.data.events.find((e) => e.id === ev.seriesId) : null;
@@ -510,7 +518,7 @@ function renderEditor(sheet) {
       h('label', {}, T.editor.start, h('input', { name: 'start', type: 'time', step: 900, value: ev.start, required: true })),
       h('label', {}, T.editor.end, h('input', { name: 'end', type: 'time', step: 900, value: ev.end, required: true }))),
     h('label', {}, T.editor.who, select('who', [['jürgen', T.persons['jürgen']], ['eike', T.persons.eike], ['both', T.persons.both]], ev.who)),
-    h('label', {}, T.editor.type, select('type', TYPES.map((t) => [t, T.types[t]]), ev.type)),
+    h('div', { class: 'field' }, h('span', { class: 'fieldlabel' }, T.editor.type), typeChips(ev.type)),
     h('label', {}, T.editor.note, h('input', { name: 'note', value: ev.note || '', list: 'sitters' }),
       h('datalist', { id: 'sitters' }, ...(state.data.settings.sitters || []).map((n) => h('option', { value: n })))),
     doneLabel,

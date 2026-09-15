@@ -19,7 +19,7 @@ export const T = {
   dragHint: 'Hoia sõrme all ja lohista: liiguta või tõmba uus aeg',
   persons: { 'jürgen': 'Jürgen', 'eike': 'Eike', both: 'Mõlemad' },
   personShort: { 'jürgen': 'J', 'eike': 'E', both: 'J+E' },
-  types: { 'töö': 'Töö', 'vaba': 'Vaba aeg', 'laara': 'Laaraga', 'koos': 'Koos', 'muu': 'Muu' },
+  types: { 'töö': 'Töö', 'vaba': 'Vaba aeg', 'laara': 'Laaraga', 'koos': 'Koos' },
   status: { plaan: 'Plaan', tehtud: 'Tehtud' },
   days: ['E', 'T', 'K', 'N', 'R', 'L', 'P'],
   months: ['jaan', 'veebr', 'märts', 'apr', 'mai', 'juuni', 'juuli', 'aug', 'sept', 'okt', 'nov', 'dets'],

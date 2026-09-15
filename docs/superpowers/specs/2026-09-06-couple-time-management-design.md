@@ -117,7 +117,8 @@ Fields:
 
 - `who`: `"jürgen" | "eike" | "both"`. `both` renders across both lanes.
 - `type`: `"töö"` (work), `"vaba"` (personal free time), `"laara"` (with
-  Laara), `"koos"` (together as a couple), `"muu"` (other).
+  Laara), `"koos"` (together as a couple). Chosen in the editor with toggle
+  chips coloured to match the grid. A `"muu"` type existed until 2026-09-15.
 - `status`: `"plaan"` (planned) or `"tehtud"` (happened). Marking done is a
   single tap in the event editor. Summaries count both but distinguish them.
 - `note`: free text, for example the sitter's name for `koos` events.
@@ -143,7 +144,7 @@ Deleting with "Ainult see päev" adds the date to `exdates`. Two recurring `tö�
 On an existing event, drag the body to move it (15-minute snap, across days and lanes) or its
 bottom edge to change the end time; the drop saves immediately. On empty space, drag to sweep
 out a new event: a ghost follows the pointer and the editor opens prefilled with that range,
-lane and a type guessed from the time (`vaba` from the evening start onward, otherwise `muu`).
+lane and a type guessed from the time (`vaba` from the evening start onward, otherwise `töö`).
 An upward sweep flips start and end; the minimum length is 15 minutes and both ends clamp to
 the 07:00-22:00 grid. A plain click on empty space still opens a one-hour editor.
 
@@ -179,10 +180,11 @@ top bar on desktop: **Nädal**, **Ülevaade**, **Seaded**.
 - Grid: hours 07:00–22:00 vertically, seven day columns Mon–Sun. Each day
   column is split into two lanes: left Jürgen, right Eike. `both` events span
   both lanes.
-- Colours by type: töö grey, vaba green, laara orange, koos purple, muu blue.
+- Colours by type: töö grey, vaba green, laara orange, koos purple.
   Planned events have a dashed border; done events solid.
 - Today's column highlighted, current time line drawn.
-- Tap empty slot: opens editor with date, that hour, `who` = lane tapped.
+- Tap empty slot: opens editor with date, that hour, `who` = lane tapped, type
+  `vaba` in the evening and `töö` otherwise.
 - Tap event: opens editor (edit fields, "Tehtud" toggle, delete).
 - Day header tap: opens **Õhtu kiirvalik** (evening quick pick) sheet with
   presets. Choosing one replaces existing 17:00–bedtime events for that date

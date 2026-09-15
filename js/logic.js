@@ -1,5 +1,5 @@
 export const PERSONS = ['jürgen', 'eike'];
-export const TYPES = ['töö', 'vaba', 'laara', 'koos', 'muu'];
+export const TYPES = ['töö', 'vaba', 'laara', 'koos'];
 
 const pad = (n) => String(n).padStart(2, '0');
 
