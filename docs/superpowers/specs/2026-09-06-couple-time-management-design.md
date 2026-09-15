@@ -138,11 +138,17 @@ instance with scope "Ainult see päev" creates an override; "Kogu seeria" edits 
 Deleting with "Ainult see päev" adds the date to `exdates`. Two recurring `töö` events
 (Mon–Fri 09–17, both persons) are seeded; `Täida töö` was removed.
 
-### Drag (added 2026-09-06)
+### Drag (added 2026-09-06, extended 2026-09-15)
 
-Mouse: drag an event body to move (15-minute snap, across days and lanes), drag its bottom
-edge to change the end time. Touch: hold about 400 ms, then drag to move; a plain swipe
-scrolls. Drop saves immediately.
+On an existing event, drag the body to move it (15-minute snap, across days and lanes) or its
+bottom edge to change the end time; the drop saves immediately. On empty space, drag to sweep
+out a new event: a ghost follows the pointer and the editor opens prefilled with that range,
+lane and a type guessed from the time (`vaba` from the evening start onward, otherwise `muu`).
+An upward sweep flips start and end; the minimum length is 15 minutes and both ends clamp to
+the 07:00-22:00 grid. A plain click on empty space still opens a one-hour editor.
+
+Mouse drags start after 4 px of movement. Touch requires a hold of about 400 ms first, so a
+plain swipe still scrolls the page and changes the week.
 
 ## Persistence
 

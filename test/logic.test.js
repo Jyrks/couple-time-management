@@ -4,7 +4,7 @@ import {
   PERSONS, TYPES, weekStart, addDays, weekDates, dayOfWeek, toMinutes, fromMinutes,
   durationHours, newId, sortEvents, presets, applyPreset, summarize,
   balanceOverWeeks, eveningOverview, mergeEvents, todayStr,
-  expandEvents, excludeDate, detachInstance, deleteSeries, snap15, moveEvent, resizeEvent,
+  expandEvents, excludeDate, detachInstance, deleteSeries, snap15, moveEvent, resizeEvent, dragRange,
 } from '../js/logic.js';
 
 const settings = {
@@ -318,4 +318,22 @@ test('resizeEvent changes end, minimum 15 minutes, clamped', () => {
   assert.deepEqual(resizeEvent(e, 55, 22 * 60), { start: '17:00', end: '20:00' });
   assert.deepEqual(resizeEvent(e, -300, 22 * 60), { start: '17:00', end: '17:15' });
   assert.deepEqual(resizeEvent(e, 900, 22 * 60), { start: '17:00', end: '22:00' });
+});
+
+test('dragRange: downward drag keeps anchor as start', () => {
+  assert.deepEqual(dragRange(toMinutes('17:00'), toMinutes('19:30'), 7 * 60, 22 * 60), { start: '17:00', end: '19:30' });
+});
+
+test('dragRange: upward drag flips, snapping both ends to 15 min', () => {
+  assert.deepEqual(dragRange(toMinutes('19:00'), toMinutes('17:10'), 7 * 60, 22 * 60), { start: '17:15', end: '19:00' });
+});
+
+test('dragRange: minimum length is 15 minutes', () => {
+  assert.deepEqual(dragRange(toMinutes('18:00'), toMinutes('18:03'), 7 * 60, 22 * 60), { start: '18:00', end: '18:15' });
+});
+
+test('dragRange: clamps to day bounds', () => {
+  assert.deepEqual(dragRange(toMinutes('21:30'), toMinutes('23:30'), 7 * 60, 22 * 60), { start: '21:30', end: '22:00' });
+  assert.deepEqual(dragRange(toMinutes('07:30'), toMinutes('05:00'), 7 * 60, 22 * 60), { start: '07:00', end: '07:30' });
+  assert.deepEqual(dragRange(toMinutes('22:00'), toMinutes('23:00'), 7 * 60, 22 * 60), { start: '21:45', end: '22:00' });
 });

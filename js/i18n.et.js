@@ -16,7 +16,7 @@ export const T = {
   expired: 'Ligipääs aegunud, uuenda seadistust (setup.html)',
   tabs: { week: 'Nädal', review: 'Ülevaade', settings: 'Seaded' },
   today: 'Täna',
-  dragHint: 'Hoia sündmusel sõrme all ja lohista',
+  dragHint: 'Hoia sõrme all ja lohista: liiguta või tõmba uus aeg',
   persons: { 'jürgen': 'Jürgen', 'eike': 'Eike', both: 'Mõlemad' },
   personShort: { 'jürgen': 'J', 'eike': 'E', both: 'J+E' },
   types: { 'töö': 'Töö', 'vaba': 'Vaba aeg', 'laara': 'Laaraga', 'koos': 'Koos', 'muu': 'Muu' },

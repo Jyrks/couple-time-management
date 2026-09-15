@@ -136,3 +136,4 @@ legend { color: var(--muted); font-size: 13px; padding: 0 4px; }
 .scope { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
 .scope .hint { width: 100%; margin: 0 0 2px; }
 button.small { padding: 3px 8px; font-size: 12px; }
+.ev.creating { pointer-events: none; opacity: .9; }

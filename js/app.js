@@ -2,7 +2,7 @@ import { T } from './i18n.et.js';
 import {
   PERSONS, TYPES, todayStr, weekStart, addDays, weekDates, toMinutes, fromMinutes, newId,
   sortEvents, presets, applyPreset, summarize, balanceOverWeeks, eveningOverview, mergeEvents,
-  expandEvents, excludeDate, detachInstance, deleteSeries, moveEvent, resizeEvent,
+  expandEvents, excludeDate, detachInstance, deleteSeries, moveEvent, resizeEvent, dragRange,
 } from './logic.js';
 import { unlock, normalizeUser } from './crypto.js';
 import { GitHubStore, GitHubError } from './github.js';
@@ -271,34 +271,76 @@ function onSlotClick(ev, date) {
 }
 
 // ---------- drag to move / resize ----------
-// Mouse: press and move. Touch: hold ~400 ms, then move (a plain swipe keeps scrolling).
+// On an event: move it, or drag its bottom edge to resize. On empty space: sweep out a new
+// event and the editor opens prefilled. Mouse: press and move. Touch: hold ~400 ms, then move
+// (a plain swipe still scrolls and changes week).
 function attachDrag(grid, instances) {
   const byId = new Map(instances.map((i) => [i.id, i]));
   let drag = null;
   let holdTimer = null;
 
+  const minuteAt = (col, y) => DAY_START * 60 + (y - col.getBoundingClientRect().top) / HOUR_PX * 60;
+  const defaultRange = (anchorMin) => dragRange(anchorMin, anchorMin + 60, DAY_START * 60, DAY_END * 60);
+
   const begin = (target, x, y) => {
     const el = target.closest('.ev');
-    if (!el) return false;
-    const inst = byId.get(el.dataset.id);
-    if (!inst) return false;
+    if (el) {
+      const inst = byId.get(el.dataset.id);
+      if (!inst) return false;
+      drag = {
+        inst, el, x0: x, y0: y, active: false, moved: false,
+        mode: target.classList.contains('ev-resize') ? 'resize' : 'move',
+        cur: { date: inst.date, who: inst.who, start: inst.start, end: inst.end },
+      };
+      return true;
+    }
+    // empty space: sweep out a new event, Google-Calendar style
+    const col = target.closest('.daycol');
+    if (!col) return false;
+    const rect = col.getBoundingClientRect();
+    const anchorMin = minuteAt(col, y);
+    const who = x < rect.left + rect.width / 2 ? 'jürgen' : 'eike';
+    const type = anchorMin >= toMinutes(state.data.settings.eveningStart || '17:00') ? 'vaba' : 'muu';
     drag = {
-      inst, el, x0: x, y0: y, active: false, moved: false,
-      mode: target.classList.contains('ev-resize') ? 'resize' : 'move',
-      cur: { date: inst.date, who: inst.who, start: inst.start, end: inst.end },
+      mode: 'create', col, anchorMin, who, type, date: col.dataset.date,
+      x0: x, y0: y, active: false, moved: false,
+      cur: { date: col.dataset.date, who, ...defaultRange(anchorMin) },
     };
     return true;
+  };
+
+  const paint = () => {
+    const g = eventGeometry(drag.cur);
+    drag.el.style.top = `${g.top}px`;
+    drag.el.style.height = `${g.height - 2}px`;
+    drag.el.classList.remove('lane-j', 'lane-e', 'lane-both');
+    drag.el.classList.add(laneClass(drag.cur.who));
+    drag.el.querySelector('.evtime').textContent = `${drag.cur.start}–${drag.cur.end}`;
   };
 
   const activate = () => {
     if (!drag || drag.active) return;
     drag.active = true;
-    drag.el.classList.add('dragging');
+    if (drag.mode === 'create') {
+      drag.el = h('div', { class: `ev ${laneClass(drag.who)} plaan type-${TYPE_CLASS[drag.type]} dragging creating` },
+        h('span', { class: 'evlabel' }, T.types[drag.type]),
+        h('span', { class: 'evtime' }));
+      drag.col.append(drag.el);
+      paint();
+    } else {
+      drag.el.classList.add('dragging');
+    }
     if (navigator.vibrate) navigator.vibrate(10);
   };
 
   const update = (x, y) => {
     if (!drag || !drag.active) return;
+    if (drag.mode === 'create') {
+      drag.cur = { date: drag.date, who: drag.who, ...dragRange(drag.anchorMin, minuteAt(drag.col, y), DAY_START * 60, DAY_END * 60) };
+      drag.moved = true;
+      paint();
+      return;
+    }
     const deltaMin = (y - drag.y0) / HOUR_PX * 60;
     const times = drag.mode === 'resize'
       ? resizeEvent(drag.inst, deltaMin, DAY_END * 60)
@@ -317,12 +359,7 @@ function attachDrag(grid, instances) {
     }
     drag.cur = { date, who, ...times };
     drag.moved = true;
-    const g = eventGeometry(drag.cur);
-    drag.el.style.top = `${g.top}px`;
-    drag.el.style.height = `${g.height - 2}px`;
-    drag.el.classList.remove('lane-j', 'lane-e', 'lane-both');
-    drag.el.classList.add(laneClass(who));
-    drag.el.querySelector('.evtime').textContent = `${times.start}–${times.end}`;
+    paint();
   };
 
   const end = async () => {
@@ -333,6 +370,14 @@ function attachDrag(grid, instances) {
     drag = null;
     if (!d.active) return;
     dragEndedAt = Date.now();
+    if (d.mode === 'create') {
+      const range = d.moved ? d.cur : defaultRange(d.anchorMin);
+      openEditor({
+        id: newId(), date: d.date, start: range.start, end: range.end, who: d.who, type: d.type,
+        status: d.date < todayStr() ? 'tehtud' : 'plaan', note: '',
+      }, true);
+      return;
+    }
     const changed = d.moved && (d.cur.date !== d.inst.date || d.cur.who !== d.inst.who || d.cur.start !== d.inst.start || d.cur.end !== d.inst.end);
     if (!changed) { render(); return; }
     await commitInstanceChange(d.inst, d.cur, 'day');

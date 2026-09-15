@@ -234,3 +234,17 @@ export function mergeEvents(remote, local, pendingDeletes = new Set()) {
   }
   return sortEvents([...map.values()]);
 }
+
+// Time range swept out by dragging on empty grid space. The anchor is where the drag
+// started, so an upward drag flips start and end. Both ends snap to 15 minutes.
+export function dragRange(anchorMin, currentMin, dayStartMin, dayEndMin) {
+  const a = snap15(anchorMin);
+  const c = snap15(currentMin);
+  let start = Math.max(dayStartMin, Math.min(a, c));
+  let end = Math.min(dayEndMin, Math.max(a, c));
+  if (end - start < 15) {
+    if (start + 15 <= dayEndMin) end = start + 15;
+    else start = end - 15;
+  }
+  return { start: fromMinutes(start), end: fromMinutes(end) };
+}
