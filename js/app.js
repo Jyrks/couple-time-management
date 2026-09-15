@@ -226,7 +226,11 @@ function renderWeek() {
     weekHeader(),
     h('div', { class: 'actions' },
       h('span', { class: 'hint draghint' }, T.dragHint),
-      h('div', { class: 'legend' }, ...TYPES.map((t) => h('span', { class: `lg type-${TYPE_CLASS[t]}` }, T.types[t])))),
+      h('div', { class: 'legend' },
+        h('span', { class: 'lg type-work' }, T.types['töö']),
+        h('span', { class: 'lg type-koos' }, T.types.koos),
+        h('span', { class: 'lg who-j' }, T.persons['jürgen']),
+        h('span', { class: 'lg who-e' }, T.persons.eike))),
     h('div', { class: 'heads' }, h('div', { class: 'corner' }), ...heads),
     grid);
 }
@@ -237,6 +241,11 @@ function eventGeometry(e) {
   const top = (startMin - DAY_START * 60) / 60 * HOUR_PX;
   const height = Math.max(14, (endMin - startMin) / 60 * HOUR_PX);
   return { top, height, visible: endMin > startMin };
+}
+
+// Vaba aeg and Laaraga are coloured by person; this class carries that.
+function whoClass(who) {
+  return who === 'jürgen' ? 'who-j' : who === 'eike' ? 'who-e' : 'who-both';
 }
 
 // Koos is time together, so it always spans both lanes.
@@ -257,7 +266,7 @@ function renderEvent(e) {
   // keep a grabbable middle on short events: each handle takes at most a third of the height
   const handleStyle = `height:${Math.max(3, Math.min(8, Math.round(g.height / 3)))}px`;
   return h('div', {
-    class: `ev ${laneClass(e.who, e.type)} ${e.status === 'tehtud' ? 'tehtud' : 'plaan'} type-${TYPE_CLASS[e.type] || 'work'}${e.seriesId ? ' series' : ''}${compact ? ' compact' : ''}`,
+    class: `ev ${laneClass(e.who, e.type)} ${e.status === 'tehtud' ? 'tehtud' : 'plaan'} type-${TYPE_CLASS[e.type] || 'work'}${e.seriesId ? ' series' : ''}${compact ? ' compact' : ''} ${whoClass(e.who)}`,
     style: `top:${g.top}px;height:${g.height - 2}px`,
     'data-id': e.id,
     title: `${e.start}–${e.end} ${label}`,
@@ -339,7 +348,7 @@ function attachDrag(grid, instances) {
     if (!drag || drag.active) return;
     drag.active = true;
     if (drag.mode === 'create') {
-      drag.el = h('div', { class: `ev ${laneClass(drag.who, drag.type)} plaan type-${TYPE_CLASS[drag.type]} dragging creating` },
+      drag.el = h('div', { class: `ev ${laneClass(drag.who, drag.type)} plaan type-${TYPE_CLASS[drag.type]} ${whoClass(drag.who)} dragging creating` },
         h('span', { class: 'evlabel' }, T.types[drag.type]),
         h('span', { class: 'evtime' }));
       drag.col.append(drag.el);

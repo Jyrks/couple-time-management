@@ -193,7 +193,10 @@ top bar on desktop: **Nädal**, **Ülevaade**, **Seaded**.
 - Grid: hours 07:00–22:00 vertically, seven day columns Mon–Sun. Each day
   column is split into two lanes: left Jürgen, right Eike. `both` events span
   both lanes.
-- Colours by type: töö grey, vaba green, laara orange, koos purple.
+- Card colour names the person for the evening types: `vaba` is a strong blue
+  (Jürgen) or pink (Eike), `laara` the same hues but softer. `töö` stays grey and
+  `koos` purple, so work does not flood the week with colour. The legend above the
+  grid shows Töö, Koos, Jürgen and Eike rather than one chip per type.
 - Each day column is tinted by lane: Jürgen's half pale blue, Eike's pale pink,
   both stronger on today. `koos` events always span the full column whatever
   `who` says, and count as time for both people.

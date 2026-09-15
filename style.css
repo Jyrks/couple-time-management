@@ -1,6 +1,8 @@
 :root {
   --bg: #f6f7fb; --panel: #fff; --text: #1f2937; --muted: #6b7280; --line: #e5e7eb;
   --accent: #2563eb; --danger: #dc2626; --today: #eff6ff;
+  --j-strong: #a9c9fb; --j-strong-t: #16307a; --j-soft: #d8e7fd; --j-soft-t: #1e40af;
+  --e-strong: #f9b8d8; --e-strong-t: #7a1240; --e-soft: #fcdcec; --e-soft-t: #9d174d;
   --lane-j: #f2f6ff; --lane-e: #fdf3f8;
   --lane-j-today: #e2ecff; --lane-e-today: #fbe6f1;
   --work: #cbd5e1; --work-t: #334155;
@@ -57,6 +59,8 @@ main { padding: 10px 8px 80px; max-width: 1100px; margin: 0 auto; }
 .lg.type-free { background: var(--free); color: var(--free-t); }
 .lg.type-laara { background: var(--laara); color: var(--laara-t); }
 .lg.type-koos { background: var(--koos); color: var(--koos-t); }
+.lg.who-j { background: var(--j-strong); color: var(--j-strong-t); }
+.lg.who-e { background: var(--e-strong); color: var(--e-strong-t); }
 
 /* week grid */
 .heads, .grid { display: grid; grid-template-columns: 36px repeat(7, 1fr); }
@@ -85,6 +89,10 @@ main { padding: 10px 8px 80px; max-width: 1100px; margin: 0 auto; }
 .ev.lane-both { left: 1px; right: 1px; }
 .ev.plaan { border-style: dashed; border-color: rgba(0,0,0,.35); }
 .ev.type-work { background: var(--work); color: var(--work-t); }
+.ev.type-free.who-j { background: var(--j-strong); color: var(--j-strong-t); }
+.ev.type-free.who-e { background: var(--e-strong); color: var(--e-strong-t); }
+.ev.type-laara.who-j { background: var(--j-soft); color: var(--j-soft-t); }
+.ev.type-laara.who-e { background: var(--e-soft); color: var(--e-soft-t); }
 .ev.type-free { background: var(--free); color: var(--free-t); }
 .ev.type-laara { background: var(--laara); color: var(--laara-t); }
 .ev.type-koos { background: var(--koos); color: var(--koos-t); }
