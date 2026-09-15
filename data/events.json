@@ -141,6 +141,17 @@
       "updated": "2026-09-15T10:26:05.196Z",
       "seriesId": "seedwrkj",
       "origDate": "2026-09-18"
+    },
+    {
+      "id": "bxl5cud3",
+      "date": "2026-09-18",
+      "start": "17:00",
+      "end": "21:00",
+      "who": "jürgen",
+      "type": "laara",
+      "note": "",
+      "status": "plaan",
+      "updated": "2026-09-15T10:41:01.980Z"
     }
   ]
 }
