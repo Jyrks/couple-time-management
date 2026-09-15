@@ -4,7 +4,7 @@ import {
   PERSONS, TYPES, weekStart, addDays, weekDates, dayOfWeek, toMinutes, fromMinutes,
   durationHours, newId, sortEvents, presets, applyPreset, summarize,
   balanceOverWeeks, eveningOverview, mergeEvents, todayStr,
-  expandEvents, excludeDate, detachInstance, deleteSeries, snap15, moveEvent, resizeEvent, dragRange,
+  expandEvents, excludeDate, detachInstance, deleteSeries, snap15, moveEvent, resizeEvent, resizeEventStart, dragRange,
 } from '../js/logic.js';
 
 const settings = {
@@ -336,4 +336,16 @@ test('dragRange: clamps to day bounds', () => {
   assert.deepEqual(dragRange(toMinutes('21:30'), toMinutes('23:30'), 7 * 60, 22 * 60), { start: '21:30', end: '22:00' });
   assert.deepEqual(dragRange(toMinutes('07:30'), toMinutes('05:00'), 7 * 60, 22 * 60), { start: '07:00', end: '07:30' });
   assert.deepEqual(dragRange(toMinutes('22:00'), toMinutes('23:00'), 7 * 60, 22 * 60), { start: '21:45', end: '22:00' });
+});
+
+test('resizeEventStart moves the start, keeps the end', () => {
+  const e = { start: '17:00', end: '19:00' };
+  assert.deepEqual(resizeEventStart(e, -55, 7 * 60), { start: '16:00', end: '19:00' });
+  assert.deepEqual(resizeEventStart(e, 37, 7 * 60), { start: '17:30', end: '19:00' }); // snaps to nearest quarter
+});
+
+test('resizeEventStart keeps at least 15 minutes and clamps to day start', () => {
+  const e = { start: '17:00', end: '19:00' };
+  assert.deepEqual(resizeEventStart(e, 300, 7 * 60), { start: '18:45', end: '19:00' });
+  assert.deepEqual(resizeEventStart(e, -900, 7 * 60), { start: '07:00', end: '19:00' });
 });

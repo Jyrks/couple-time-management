@@ -2,7 +2,7 @@ import { T } from './i18n.et.js';
 import {
   PERSONS, TYPES, todayStr, weekStart, addDays, weekDates, toMinutes, fromMinutes, newId,
   sortEvents, presets, applyPreset, summarize, balanceOverWeeks, eveningOverview, mergeEvents,
-  expandEvents, excludeDate, detachInstance, deleteSeries, moveEvent, resizeEvent, dragRange,
+  expandEvents, excludeDate, detachInstance, deleteSeries, moveEvent, resizeEvent, resizeEventStart, dragRange,
 } from './logic.js';
 import { unlock, normalizeUser } from './crypto.js';
 import { GitHubStore, GitHubError } from './github.js';
@@ -245,6 +245,8 @@ function renderEvent(e) {
   const g = eventGeometry(e);
   if (!g.visible) return h('span');
   const label = `${T.types[e.type] || e.type}${e.note ? ' · ' + e.note : ''}`;
+  // keep a grabbable middle on short events: each handle takes at most a third of the height
+  const handleStyle = `height:${Math.max(3, Math.min(8, Math.round(g.height / 3)))}px`;
   return h('div', {
     class: `ev ${laneClass(e.who)} ${e.status === 'tehtud' ? 'tehtud' : 'plaan'} type-${TYPE_CLASS[e.type] || 'work'}${e.seriesId ? ' series' : ''}`,
     style: `top:${g.top}px;height:${g.height - 2}px`,
@@ -252,9 +254,10 @@ function renderEvent(e) {
     title: `${e.start}–${e.end} ${label}`,
     onclick: (ev) => { ev.stopPropagation(); if (!recentlyDragged()) openEditor({ ...e }, false); },
   },
+  h('span', { class: 'ev-resize-top', style: handleStyle }),
   h('span', { class: 'evlabel' }, e.seriesId ? '↻ ' : '', label),
   h('span', { class: 'evtime' }, `${e.start}–${e.end}`),
-  h('span', { class: 'ev-resize' }));
+  h('span', { class: 'ev-resize', style: handleStyle }));
 }
 
 function onSlotClick(ev, date) {
@@ -289,7 +292,8 @@ function attachDrag(grid, instances) {
       if (!inst) return false;
       drag = {
         inst, el, x0: x, y0: y, active: false, moved: false,
-        mode: target.classList.contains('ev-resize') ? 'resize' : 'move',
+        mode: target.classList.contains('ev-resize') ? 'resize'
+          : target.classList.contains('ev-resize-top') ? 'resize-start' : 'move',
         cur: { date: inst.date, who: inst.who, start: inst.start, end: inst.end },
       };
       return true;
@@ -342,8 +346,8 @@ function attachDrag(grid, instances) {
       return;
     }
     const deltaMin = (y - drag.y0) / HOUR_PX * 60;
-    const times = drag.mode === 'resize'
-      ? resizeEvent(drag.inst, deltaMin, DAY_END * 60)
+    const times = drag.mode === 'resize' ? resizeEvent(drag.inst, deltaMin, DAY_END * 60)
+      : drag.mode === 'resize-start' ? resizeEventStart(drag.inst, deltaMin, DAY_START * 60)
       : moveEvent(drag.inst, deltaMin, DAY_START * 60, DAY_END * 60);
     let { date, who } = drag.cur;
     if (drag.mode === 'move') {

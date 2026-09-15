@@ -122,8 +122,17 @@ legend { color: var(--muted); font-size: 13px; padding: 0 4px; }
 .ev .evtime { display: none; font-size: 10px; opacity: .85; }
 .ev.dragging { opacity: .85; box-shadow: 0 6px 18px rgba(0,0,0,.25); z-index: 10; border-style: solid; }
 .ev.dragging .evtime { display: block; }
-.ev-resize { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; cursor: ns-resize; }
-@media (hover: none) { .ev-resize { display: none; } }
+.ev-resize, .ev-resize-top { position: absolute; left: 0; right: 0; height: 8px; cursor: ns-resize; z-index: 2; }
+.ev-resize { bottom: 0; }
+.ev-resize-top { top: 0; }
+.ev-resize::after, .ev-resize-top::after {
+  content: ''; position: absolute; left: 50%; transform: translateX(-50%);
+  width: 18px; height: 2px; border-radius: 2px; background: rgba(0, 0, 0, .35); opacity: 0;
+}
+.ev-resize::after { bottom: 1px; }
+.ev-resize-top::after { top: 1px; }
+.ev:hover .ev-resize::after, .ev:hover .ev-resize-top::after { opacity: 1; }
+@media (hover: none) { .ev-resize, .ev-resize-top { display: none; } }
 .ev.series .evlabel::before { content: ''; }
 .draghint { display: none; }
 @media (hover: none) { .draghint { display: inline; } }

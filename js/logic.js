@@ -170,6 +170,13 @@ export function moveEvent(ev, deltaMin, dayStartMin, dayEndMin) {
   return { start: fromMinutes(start), end: fromMinutes(start + dur) };
 }
 
+// Drag the top edge: the end stays put and the start moves.
+export function resizeEventStart(ev, deltaMin, dayStartMin) {
+  const endMin = toMinutes(ev.end);
+  const start = Math.min(endMin - 15, Math.max(dayStartMin, snap15(toMinutes(ev.start) + deltaMin)));
+  return { start: fromMinutes(start), end: ev.end };
+}
+
 export function resizeEvent(ev, deltaMin, dayEndMin) {
   const startMin = toMinutes(ev.start);
   let end = snap15(toMinutes(ev.end) + deltaMin);

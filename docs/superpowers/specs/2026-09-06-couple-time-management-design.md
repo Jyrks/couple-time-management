@@ -141,8 +141,11 @@ Deleting with "Ainult see päev" adds the date to `exdates`. Two recurring `tö�
 
 ### Drag (added 2026-09-06, extended 2026-09-15)
 
-On an existing event, drag the body to move it (15-minute snap, across days and lanes) or its
-bottom edge to change the end time; the drop saves immediately. On empty space, drag to sweep
+On an existing event, drag the body to move it (15-minute snap, across days and lanes), its
+top edge to change the start time, or its bottom edge to change the end time; the drop saves
+immediately. A resized event keeps at least 15 minutes. Resize handles are pointer-only: they
+are hidden where `hover: none` matches, so on a phone an event moves as a whole and its times
+are edited in the editor. On empty space, drag to sweep
 out a new event: a ghost follows the pointer and the editor opens prefilled with that range,
 lane and a type guessed from the time (`vaba` from the evening start onward, otherwise `töö`).
 An upward sweep flips start and end; the minimum length is 15 minutes and both ends clamp to
