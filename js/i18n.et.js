@@ -18,6 +18,7 @@ export const T = {
   today: 'Täna',
   dragHint: 'Hoia sõrme all ja lohista: liiguta või tõmba uus aeg',
   duplicated: 'Dubleeritud:',
+  menu: { duplicate: 'Dubleeri järgmisele päevale', delete: 'Kustuta', deleteDay: 'Kustuta see päev' },
   persons: { 'jürgen': 'Jürgen', 'eike': 'Eike', both: 'Mõlemad' },
   personShort: { 'jürgen': 'J', 'eike': 'E', both: 'J+E' },
   types: { 'töö': 'Töö', 'vaba': 'Vaba aeg', 'laara': 'Laaraga', 'koos': 'Koos' },

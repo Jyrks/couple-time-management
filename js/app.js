@@ -19,7 +19,7 @@ const TYPE_CLASS = { 'töö': 'work', vaba: 'free', laara: 'laara', koos: 'koos'
 const state = {
   user: null, token: null, store: null, data: null, sha: null,
   week: weekStart(todayStr()), view: 'week', pendingDeletes: new Set(),
-  status: '', statusErr: false, sheet: null,
+  status: '', statusErr: false, sheet: null, menu: null,
 };
 const app = document.getElementById('app');
 
@@ -157,6 +157,7 @@ function render() {
         h('button', { class: v === state.view ? 'active' : '', onclick: () => { state.view = v; render(); } }, T.tabs[v])))),
     h('main', {}, state.view === 'week' ? renderWeek() : state.view === 'review' ? renderReview() : renderSettings()),
     state.sheet ? renderSheet() : null,
+    state.menu ? renderMenu() : null,
   );
 }
 
@@ -253,7 +254,7 @@ function renderEvent(e) {
     'data-id': e.id,
     title: `${e.start}–${e.end} ${label}`,
     onclick: (ev) => { ev.stopPropagation(); if (!recentlyDragged()) openEditor({ ...e }, false); },
-    oncontextmenu: (ev) => { ev.preventDefault(); ev.stopPropagation(); duplicateToNextDay(e); },
+    oncontextmenu: (ev) => { ev.preventDefault(); ev.stopPropagation(); openMenu(e, ev.clientX, ev.clientY); },
   },
   h('span', { class: 'ev-resize-top', style: handleStyle }),
   h('span', { class: 'evlabel' }, e.seriesId ? '↻ ' : '', label),
@@ -573,6 +574,44 @@ async function submitEditor(f, orig, isNew, scope, master) {
   }
   closeSheet();
   await save(`${changes.date} ${T.types[changes.type]} ${changes.start}–${changes.end} (${T.persons[changes.who]})`);
+}
+
+// ---------- right-click menu ----------
+function onMenuKey(e) { if (e.key === 'Escape') closeMenu(); }
+
+function openMenu(ev, x, y) {
+  state.menu = { ev, x, y };
+  window.addEventListener('keydown', onMenuKey);
+  render();
+}
+
+function closeMenu() {
+  if (!state.menu) return;
+  state.menu = null;
+  window.removeEventListener('keydown', onMenuKey);
+  render();
+}
+
+function renderMenu() {
+  const { ev, x, y } = state.menu;
+  const left = Math.max(8, Math.min(x, window.innerWidth - 230));
+  const top = Math.max(8, Math.min(y, window.innerHeight - 140));
+  const run = (fn) => () => { const target = ev; closeMenu(); fn(target); };
+  return h('div', {
+    class: 'menuoverlay',
+    onclick: closeMenu,
+    oncontextmenu: (e) => { e.preventDefault(); closeMenu(); },
+  }, h('div', { class: 'menu', style: `left:${left}px;top:${top}px`, onclick: (e) => e.stopPropagation() },
+    h('div', { class: 'menuhead' }, `${formatDate(ev.date)} · ${ev.start}–${ev.end} ${T.types[ev.type] || ev.type}`),
+    h('button', { type: 'button', class: 'menuitem', onclick: run(duplicateToNextDay) }, T.menu.duplicate),
+    h('button', { type: 'button', class: 'menuitem danger', onclick: run(deleteInstance) },
+      ev.seriesId ? T.menu.deleteDay : T.menu.delete)));
+}
+
+// Delete one event, or hide a single day of a series.
+function deleteInstance(ev) {
+  const master = ev.seriesId ? state.data.events.find((e) => e.id === ev.seriesId) : null;
+  return deleteFromEditor(ev, 'day', master);
 }
 
 // Copy an event to the next day. Right-click on the grid, or the button in the editor.

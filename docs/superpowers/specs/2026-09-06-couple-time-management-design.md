@@ -156,8 +156,11 @@ plain swipe still scrolls the page and changes the week.
 
 ### Duplicate (added 2026-09-15)
 
-Right-clicking an event on the grid, or pressing "Dubleeri" in its editor, copies it to the
-next day. The copy is always a plain event: duplicating a series instance does not extend the
+Right-clicking an event on the grid opens a small menu with two actions: copy to the next day,
+and delete (labelled "Kustuta see päev" on a series instance, since it hides that date only).
+The menu closes on Escape, an outside click, or a second right-click. On touch, where there is
+no right-click, the editor carries the same two actions as buttons. Duplicating copies the
+event to the next day. The copy is always a plain event: duplicating a series instance does not extend the
 series, and the source is left untouched. The status pill names the target date, which matters
 when the copy lands outside the visible week.
 
