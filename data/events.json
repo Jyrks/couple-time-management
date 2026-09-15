@@ -86,7 +86,7 @@
       "updated": "2026-09-15T10:40:53.512Z"
     },
     {
-      "id": "9zzy6sjt",
+      "id": "pai5u4pk",
       "date": "2026-09-15",
       "start": "17:00",
       "end": "21:00",
@@ -94,7 +94,18 @@
       "type": "laara",
       "note": "",
       "status": "plaan",
-      "updated": "2026-09-15T10:42:34.864Z"
+      "updated": "2026-09-15T10:42:36.643Z"
+    },
+    {
+      "id": "9zzy6sjt",
+      "date": "2026-09-16",
+      "start": "17:00",
+      "end": "21:00",
+      "who": "jürgen",
+      "type": "laara",
+      "note": "",
+      "status": "plaan",
+      "updated": "2026-09-15T10:42:35.965Z"
     },
     {
       "id": "9sshucsp",
@@ -106,17 +117,6 @@
       "note": "",
       "status": "plaan",
       "updated": "2026-09-15T10:40:56.504Z"
-    },
-    {
-      "id": "pai5u4pk",
-      "date": "2026-09-16",
-      "start": "17:00",
-      "end": "21:00",
-      "who": "jürgen",
-      "type": "laara",
-      "note": "",
-      "status": "plaan",
-      "updated": "2026-09-15T10:42:31.726Z"
     },
     {
       "id": "dddwru26",
