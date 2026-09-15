@@ -130,6 +130,17 @@
       "updated": "2026-09-15T10:26:05.196Z",
       "seriesId": "seedwrkj",
       "origDate": "2026-09-18"
+    },
+    {
+      "id": "c2f7h4ny",
+      "date": "2026-09-19",
+      "start": "09:00",
+      "end": "10:00",
+      "who": "both",
+      "type": "koos",
+      "status": "plaan",
+      "note": "Ema sünna",
+      "updated": "2026-09-15T10:56:39.436Z"
     }
   ]
 }
