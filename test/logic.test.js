@@ -375,3 +375,16 @@ test('duplicateEvent marks a copy in the past as done and keeps existing events'
   assert.equal(out.find((e) => e.type === 'laara').status, 'tehtud');
   assert.ok(out.some((e) => e.id === existing.id));
 });
+
+test('koos counts for both people whatever who says', () => {
+  const dates = weekDates('2026-09-06');
+  const events = [
+    ev({ date: '2026-09-01', start: '18:00', end: '21:00', who: 'eike', type: 'koos', status: 'tehtud' }),
+    ev({ date: '2026-09-02', start: '18:00', end: '20:00', who: 'both', type: 'koos', status: 'plaan' }),
+  ];
+  const s = summarize(events, dates, '2026-09-06');
+  assert.equal(s.eike.koos.tehtud, 3);
+  assert.equal(s['jürgen'].koos.tehtud, 3);
+  assert.equal(s.eike.koos.plaan, 2);
+  assert.equal(s['jürgen'].koos.plaan, 2);
+});

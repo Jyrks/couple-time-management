@@ -184,8 +184,9 @@ export function resizeEvent(ev, deltaMin, dayEndMin) {
   return { start: ev.start, end: fromMinutes(end) };
 }
 
+// Time together always belongs to both, whatever `who` happens to say.
 function personsOf(ev) {
-  return ev.who === 'both' ? PERSONS : [ev.who];
+  return ev.who === 'both' || ev.type === 'koos' ? PERSONS : [ev.who];
 }
 
 export function summarize(events, dates, today = todayStr()) {

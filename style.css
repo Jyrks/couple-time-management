@@ -1,6 +1,8 @@
 :root {
   --bg: #f6f7fb; --panel: #fff; --text: #1f2937; --muted: #6b7280; --line: #e5e7eb;
   --accent: #2563eb; --danger: #dc2626; --today: #eff6ff;
+  --lane-j: #f2f6ff; --lane-e: #fdf3f8;
+  --lane-j-today: #e2ecff; --lane-e-today: #fbe6f1;
   --work: #cbd5e1; --work-t: #334155;
   --free: #bbf7d0; --free-t: #14532d;
   --laara: #fed7aa; --laara-t: #7c2d12;
@@ -64,13 +66,16 @@ main { padding: 10px 8px 80px; max-width: 1100px; margin: 0 auto; }
 .dayhead .dom { font-size: 16px; font-weight: 600; }
 .dayhead.today .dom { background: var(--accent); color: #fff; border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; }
 .dayhead .lanes { display: flex; width: 100%; font-size: 10px; color: var(--muted); margin-top: 2px; }
-.dayhead .lanes b { flex: 1; text-align: center; font-weight: 500; }
+.dayhead .lanes b { flex: 1; text-align: center; font-weight: 600; }
+.dayhead .lanes b:first-child { color: #3b6fd4; }
+.dayhead .lanes b:last-child { color: #c4508f; }
 .grid { background: var(--panel); border: 1px solid var(--line); border-radius: 0 0 10px 10px; overflow: hidden; touch-action: pan-y; }
 .timecol { position: relative; }
 .hour { position: absolute; right: 4px; transform: translateY(-7px); font-size: 10px; color: var(--muted); }
 .hour:first-child { transform: none; }
-.daycol { position: relative; border-left: 1px solid var(--line); }
-.daycol.today { background: var(--today); }
+.daycol { position: relative; border-left: 1px solid var(--line);
+  background: linear-gradient(to right, var(--lane-j) 0 50%, var(--lane-e) 50% 100%); }
+.daycol.today { background: linear-gradient(to right, var(--lane-j-today) 0 50%, var(--lane-e-today) 50% 100%); }
 .gridline { position: absolute; left: 0; right: 0; border-top: 1px solid var(--line); }
 .lanesep { position: absolute; top: 0; bottom: 0; left: 50%; border-left: 1px dashed var(--line); }
 .nowline { position: absolute; left: 0; right: 0; border-top: 2px solid var(--danger); z-index: 2; }
@@ -83,7 +88,12 @@ main { padding: 10px 8px 80px; max-width: 1100px; margin: 0 auto; }
 .ev.type-free { background: var(--free); color: var(--free-t); }
 .ev.type-laara { background: var(--laara); color: var(--laara-t); }
 .ev.type-koos { background: var(--koos); color: var(--koos-t); }
-.evlabel { display: block; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.evlabel { display: block; overflow: hidden; line-height: 1.15; }
+.evtype { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.evnote { display: block; font-weight: 600; overflow-wrap: anywhere; hyphens: auto; }
+.ev.compact { padding: 0 3px; }
+.ev.compact .evlabel { line-height: 1.05; }
+.ev.compact .evnote { font-size: 9px; }
 @media (max-width: 480px) { .evlabel { font-size: 9px; } }
 @media (min-width: 800px) { .ev { font-size: 12px; padding: 2px 5px; } .hour { font-size: 11px; } }
 

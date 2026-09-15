@@ -149,7 +149,7 @@ function setStatus(text, isErr = false) {
 
 // ---------- shell ----------
 function render() {
-  app.replaceChildren(
+  const parts = [
     h('header', { class: 'top' },
       h('h1', {}, T.appName),
       h('span', { id: 'status', class: 'status' + (state.statusErr ? ' err' : '') }, state.status),
@@ -158,7 +158,8 @@ function render() {
     h('main', {}, state.view === 'week' ? renderWeek() : state.view === 'review' ? renderReview() : renderSettings()),
     state.sheet ? renderSheet() : null,
     state.menu ? renderMenu() : null,
-  );
+  ];
+  app.replaceChildren(...parts.filter(Boolean));
 }
 
 function weekHeader() {
@@ -238,18 +239,20 @@ function eventGeometry(e) {
   return { top, height, visible: endMin > startMin };
 }
 
-function laneClass(who) {
-  return who === 'both' ? 'lane-both' : who === 'jürgen' ? 'lane-j' : 'lane-e';
+// Koos is time together, so it always spans both lanes.
+function laneClass(who, type) {
+  return who === 'both' || type === 'koos' ? 'lane-both' : who === 'jürgen' ? 'lane-j' : 'lane-e';
 }
 
 function renderEvent(e) {
   const g = eventGeometry(e);
   if (!g.visible) return h('span');
   const label = `${T.types[e.type] || e.type}${e.note ? ' · ' + e.note : ''}`;
+  const typeName = T.types[e.type] || e.type;
   // keep a grabbable middle on short events: each handle takes at most a third of the height
   const handleStyle = `height:${Math.max(3, Math.min(8, Math.round(g.height / 3)))}px`;
   return h('div', {
-    class: `ev ${laneClass(e.who)} ${e.status === 'tehtud' ? 'tehtud' : 'plaan'} type-${TYPE_CLASS[e.type] || 'work'}${e.seriesId ? ' series' : ''}`,
+    class: `ev ${laneClass(e.who, e.type)} ${e.status === 'tehtud' ? 'tehtud' : 'plaan'} type-${TYPE_CLASS[e.type] || 'work'}${e.seriesId ? ' series' : ''}${g.height < 34 ? ' compact' : ''}`,
     style: `top:${g.top}px;height:${g.height - 2}px`,
     'data-id': e.id,
     title: `${e.start}–${e.end} ${label}`,
@@ -257,7 +260,9 @@ function renderEvent(e) {
     oncontextmenu: (ev) => { ev.preventDefault(); ev.stopPropagation(); openMenu(e, ev.clientX, ev.clientY); },
   },
   h('span', { class: 'ev-resize-top', style: handleStyle }),
-  h('span', { class: 'evlabel' }, e.seriesId ? '↻ ' : '', label),
+  h('span', { class: 'evlabel' },
+    e.note && g.height < 34 ? null : h('span', { class: 'evtype' }, e.seriesId ? '↻ ' : '', typeName),
+    e.note ? h('span', { class: 'evnote' }, e.seriesId && g.height < 34 ? `↻ ${e.note}` : e.note) : null),
   h('span', { class: 'evtime' }, `${e.start}–${e.end}`),
   h('span', { class: 'ev-resize', style: handleStyle }));
 }
@@ -320,7 +325,7 @@ function attachDrag(grid, instances) {
     drag.el.style.top = `${g.top}px`;
     drag.el.style.height = `${g.height - 2}px`;
     drag.el.classList.remove('lane-j', 'lane-e', 'lane-both');
-    drag.el.classList.add(laneClass(drag.cur.who));
+    drag.el.classList.add(laneClass(drag.cur.who, drag.cur.type || drag.inst?.type || drag.type));
     drag.el.querySelector('.evtime').textContent = `${drag.cur.start}–${drag.cur.end}`;
   };
 
@@ -328,7 +333,7 @@ function attachDrag(grid, instances) {
     if (!drag || drag.active) return;
     drag.active = true;
     if (drag.mode === 'create') {
-      drag.el = h('div', { class: `ev ${laneClass(drag.who)} plaan type-${TYPE_CLASS[drag.type]} dragging creating` },
+      drag.el = h('div', { class: `ev ${laneClass(drag.who, drag.type)} plaan type-${TYPE_CLASS[drag.type]} dragging creating` },
         h('span', { class: 'evlabel' }, T.types[drag.type]),
         h('span', { class: 'evtime' }));
       drag.col.append(drag.el);
@@ -356,7 +361,7 @@ function attachDrag(grid, instances) {
       const col = [...grid.querySelectorAll('.daycol')].find((c) => { const r = c.getBoundingClientRect(); return x >= r.left && x < r.right; });
       if (col) {
         date = col.dataset.date;
-        if (drag.inst.who !== 'both') {
+        if (drag.inst.who !== 'both' && drag.inst.type !== 'koos') {
           const r = col.getBoundingClientRect();
           who = x < r.left + r.width / 2 ? 'jürgen' : 'eike';
         }
@@ -470,7 +475,10 @@ function select(name, opts, value) {
 // so reading and setting the chosen type is unchanged.
 function typeChips(value) {
   return h('div', { class: 'types' }, ...TYPES.map((t) => h('label', { class: 'typeopt' },
-    h('input', { type: 'radio', name: 'type', value: t, checked: t === value }),
+    h('input', {
+      type: 'radio', name: 'type', value: t, checked: t === value,
+      onchange: (e) => { if (t === 'koos') { const w = e.target.form?.elements.who; if (w) w.value = 'both'; } },
+    }),
     h('span', { class: `chip type-${TYPE_CLASS[t]}` }, T.types[t]))));
 }
 
@@ -549,7 +557,8 @@ function readRepeat(f) {
 async function submitEditor(f, orig, isNew, scope, master) {
   if (toMinutes(f.end.value) <= toMinutes(f.start.value)) { f.querySelector('[data-err]').textContent = T.editor.endBeforeStart; return; }
   const now = new Date().toISOString();
-  const fields = { start: f.start.value, end: f.end.value, who: f.who.value, type: f.type.value, note: f.note.value.trim() };
+  const type = f.type.value;
+  const fields = { start: f.start.value, end: f.end.value, who: type === 'koos' ? 'both' : f.who.value, type, note: f.note.value.trim() };
 
   if (master && scope === 'series') {
     const repeat = readRepeat(f);

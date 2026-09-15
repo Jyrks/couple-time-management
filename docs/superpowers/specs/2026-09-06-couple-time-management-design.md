@@ -194,6 +194,12 @@ top bar on desktop: **Nädal**, **Ülevaade**, **Seaded**.
   column is split into two lanes: left Jürgen, right Eike. `both` events span
   both lanes.
 - Colours by type: töö grey, vaba green, laara orange, koos purple.
+- Each day column is tinted by lane: Jürgen's half pale blue, Eike's pale pink,
+  both stronger on today. `koos` events always span the full column whatever
+  `who` says, and count as time for both people.
+- An event card shows its type and, below it, the note in bold, wrapping over as
+  many lines as fit. Events under 34 px show the note alone, since the colour
+  already carries the type.
   Planned events have a dashed border; done events solid.
 - Today's column highlighted, current time line drawn.
 - Tap empty slot: opens editor with date, that hour, `who` = lane tapped, type
