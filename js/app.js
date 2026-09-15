@@ -2,7 +2,7 @@ import { T } from './i18n.et.js';
 import {
   PERSONS, TYPES, todayStr, weekStart, addDays, weekDates, toMinutes, fromMinutes, newId,
   sortEvents, presets, applyPreset, summarize, balanceOverWeeks, eveningOverview, mergeEvents,
-  expandEvents, excludeDate, detachInstance, deleteSeries, moveEvent, resizeEvent, resizeEventStart, dragRange,
+  expandEvents, excludeDate, detachInstance, deleteSeries, moveEvent, resizeEvent, resizeEventStart, dragRange, duplicateEvent,
 } from './logic.js';
 import { unlock, normalizeUser } from './crypto.js';
 import { GitHubStore, GitHubError } from './github.js';
@@ -253,6 +253,7 @@ function renderEvent(e) {
     'data-id': e.id,
     title: `${e.start}–${e.end} ${label}`,
     onclick: (ev) => { ev.stopPropagation(); if (!recentlyDragged()) openEditor({ ...e }, false); },
+    oncontextmenu: (ev) => { ev.preventDefault(); ev.stopPropagation(); duplicateToNextDay(e); },
   },
   h('span', { class: 'ev-resize-top', style: handleStyle }),
   h('span', { class: 'evlabel' }, e.seriesId ? '↻ ' : '', label),
@@ -530,6 +531,7 @@ function renderEditor(sheet) {
     h('p', { class: 'error', 'data-err': true }),
     h('div', { class: 'btns' },
       isNew ? null : h('button', { type: 'button', class: 'danger', onclick: () => deleteFromEditor(ev, inSeries ? sheet.scope : 'day', master) }, T.editor.delete),
+      isNew ? null : h('button', { type: 'button', title: T.editor.duplicateHint, onclick: () => duplicateToNextDay(ev) }, T.editor.duplicate),
       h('button', { type: 'button', onclick: closeSheet }, T.editor.cancel),
       h('button', { type: 'submit', class: 'primary' }, T.editor.save)));
   applyScopeVisibility();
@@ -571,6 +573,15 @@ async function submitEditor(f, orig, isNew, scope, master) {
   }
   closeSheet();
   await save(`${changes.date} ${T.types[changes.type]} ${changes.start}–${changes.end} (${T.persons[changes.who]})`);
+}
+
+// Copy an event to the next day. Right-click on the grid, or the button in the editor.
+async function duplicateToNextDay(source) {
+  const date = addDays(source.date, 1);
+  state.data.events = duplicateEvent(state.data.events, source, date, new Date().toISOString(), todayStr());
+  closeSheet();
+  await save(`dubleeris ${source.date} → ${date} ${T.types[source.type]} ${source.start}–${source.end} (${T.persons[source.who]})`);
+  if (!state.statusErr) setStatus(`${T.duplicated} ${formatDate(date)}`);
 }
 
 async function deleteFromEditor(ev, scope, master) {

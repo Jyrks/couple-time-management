@@ -4,7 +4,7 @@ import {
   PERSONS, TYPES, weekStart, addDays, weekDates, dayOfWeek, toMinutes, fromMinutes,
   durationHours, newId, sortEvents, presets, applyPreset, summarize,
   balanceOverWeeks, eveningOverview, mergeEvents, todayStr,
-  expandEvents, excludeDate, detachInstance, deleteSeries, snap15, moveEvent, resizeEvent, resizeEventStart, dragRange,
+  expandEvents, excludeDate, detachInstance, deleteSeries, snap15, moveEvent, resizeEvent, resizeEventStart, dragRange, duplicateEvent,
 } from '../js/logic.js';
 
 const settings = {
@@ -348,4 +348,30 @@ test('resizeEventStart keeps at least 15 minutes and clamps to day start', () =>
   const e = { start: '17:00', end: '19:00' };
   assert.deepEqual(resizeEventStart(e, 300, 7 * 60), { start: '18:45', end: '19:00' });
   assert.deepEqual(resizeEventStart(e, -900, 7 * 60), { start: '07:00', end: '19:00' });
+});
+
+test('duplicateEvent copies an event to another date as a standalone event', () => {
+  const inst = { id: 'seedwrkj@2026-09-15', seriesId: 'seedwrkj', origDate: '2026-09-15', virtual: true,
+    date: '2026-09-15', start: '17:00', end: '19:00', who: 'eike', type: 'vaba', status: 'plaan', note: 'kino', updated: NOW };
+  const out = duplicateEvent([], inst, '2026-09-16', NOW, '2026-09-15');
+  assert.equal(out.length, 1);
+  const c = out[0];
+  assert.equal(c.date, '2026-09-16');
+  assert.deepEqual([c.start, c.end, c.who, c.type, c.note], ['17:00', '19:00', 'eike', 'vaba', 'kino']);
+  assert.equal(c.status, 'plaan');
+  assert.match(c.id, /^[0-9a-z]{8}$/);
+  assert.equal(c.seriesId, undefined);
+  assert.equal(c.origDate, undefined);
+  assert.equal(c.virtual, undefined);
+  assert.equal(c.repeat, undefined);
+  assert.equal(c.updated, NOW);
+});
+
+test('duplicateEvent marks a copy in the past as done and keeps existing events', () => {
+  const existing = ev({ date: '2026-09-01', start: '09:00', end: '10:00', who: 'jürgen', type: 'vaba' });
+  const inst = { date: '2026-09-01', start: '17:00', end: '19:00', who: 'jürgen', type: 'laara', status: 'tehtud', note: '' };
+  const out = duplicateEvent([existing], inst, '2026-09-02', NOW, '2026-09-15');
+  assert.equal(out.length, 2);
+  assert.equal(out.find((e) => e.type === 'laara').status, 'tehtud');
+  assert.ok(out.some((e) => e.id === existing.id));
 });

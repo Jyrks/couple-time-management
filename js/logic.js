@@ -255,3 +255,19 @@ export function dragRange(anchorMin, currentMin, dayStartMin, dayEndMin) {
   }
   return { start: fromMinutes(start), end: fromMinutes(end) };
 }
+
+// Copy an event (or a series instance) to another date as a plain, non-recurring event.
+export function duplicateEvent(events, source, date, now = new Date().toISOString(), today = todayStr()) {
+  const copy = {
+    id: newId(),
+    date,
+    start: source.start,
+    end: source.end,
+    who: source.who,
+    type: source.type,
+    note: source.note || '',
+    status: date < today ? 'tehtud' : 'plaan',
+    updated: now,
+  };
+  return sortEvents([...events, copy]);
+}

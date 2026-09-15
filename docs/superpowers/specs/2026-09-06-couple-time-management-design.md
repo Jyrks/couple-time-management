@@ -154,6 +154,13 @@ the 07:00-22:00 grid. A plain click on empty space still opens a one-hour editor
 Mouse drags start after 4 px of movement. Touch requires a hold of about 400 ms first, so a
 plain swipe still scrolls the page and changes the week.
 
+### Duplicate (added 2026-09-15)
+
+Right-clicking an event on the grid, or pressing "Dubleeri" in its editor, copies it to the
+next day. The copy is always a plain event: duplicating a series instance does not extend the
+series, and the source is left untouched. The status pill names the target date, which matters
+when the copy lands outside the visible week.
+
 ## Persistence
 
 - Read: `GET /repos/Jyrks/couple-time-management/contents/data/events.json`
