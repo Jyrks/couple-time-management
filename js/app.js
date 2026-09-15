@@ -249,10 +249,15 @@ function renderEvent(e) {
   if (!g.visible) return h('span');
   const label = `${T.types[e.type] || e.type}${e.note ? ' · ' + e.note : ''}`;
   const typeName = T.types[e.type] || e.type;
+  // whose free time or Laara time this is; koos and work do not need naming
+  const whoName = (e.type === 'laara' || e.type === 'vaba') && e.who !== 'both' ? T.persons[e.who] : null;
+  const compact = g.height < 34;
+  const showType = !(compact && (e.note || whoName));
+  const mark = e.seriesId ? '↻ ' : '';
   // keep a grabbable middle on short events: each handle takes at most a third of the height
   const handleStyle = `height:${Math.max(3, Math.min(8, Math.round(g.height / 3)))}px`;
   return h('div', {
-    class: `ev ${laneClass(e.who, e.type)} ${e.status === 'tehtud' ? 'tehtud' : 'plaan'} type-${TYPE_CLASS[e.type] || 'work'}${e.seriesId ? ' series' : ''}${g.height < 34 ? ' compact' : ''}`,
+    class: `ev ${laneClass(e.who, e.type)} ${e.status === 'tehtud' ? 'tehtud' : 'plaan'} type-${TYPE_CLASS[e.type] || 'work'}${e.seriesId ? ' series' : ''}${compact ? ' compact' : ''}`,
     style: `top:${g.top}px;height:${g.height - 2}px`,
     'data-id': e.id,
     title: `${e.start}–${e.end} ${label}`,
@@ -261,8 +266,9 @@ function renderEvent(e) {
   },
   h('span', { class: 'ev-resize-top', style: handleStyle }),
   h('span', { class: 'evlabel' },
-    e.note && g.height < 34 ? null : h('span', { class: 'evtype' }, e.seriesId ? '↻ ' : '', typeName),
-    e.note ? h('span', { class: 'evnote' }, e.seriesId && g.height < 34 ? `↻ ${e.note}` : e.note) : null),
+    showType ? h('span', { class: 'evtype' }, mark, typeName) : null,
+    whoName ? h('span', { class: 'evwho' }, showType ? '' : mark, whoName) : null,
+    e.note ? h('span', { class: 'evnote' }, showType || whoName ? '' : mark, e.note) : null),
   h('span', { class: 'evtime' }, `${e.start}–${e.end}`),
   h('span', { class: 'ev-resize', style: handleStyle }));
 }

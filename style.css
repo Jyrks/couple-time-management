@@ -90,10 +90,11 @@ main { padding: 10px 8px 80px; max-width: 1100px; margin: 0 auto; }
 .ev.type-koos { background: var(--koos); color: var(--koos-t); }
 .evlabel { display: block; overflow: hidden; line-height: 1.15; }
 .evtype { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.evnote { display: block; font-weight: 600; overflow-wrap: anywhere; hyphens: auto; }
+.evwho { display: block; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.evnote { display: block; overflow-wrap: break-word; font-size: 10px; }
 .ev.compact { padding: 0 3px; }
 .ev.compact .evlabel { line-height: 1.05; }
-.ev.compact .evnote { font-size: 9px; }
+.ev.compact .evnote, .ev.compact .evwho { font-size: 9px; }
 @media (max-width: 480px) { .evlabel { font-size: 9px; } }
 @media (min-width: 800px) { .ev { font-size: 12px; padding: 2px 5px; } .hour { font-size: 11px; } }
 
