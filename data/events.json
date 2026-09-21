@@ -196,6 +196,17 @@
       "status": "plaan",
       "note": "Ema sünna",
       "updated": "2026-09-15T10:56:44.636Z"
+    },
+    {
+      "id": "ga2wm69h",
+      "date": "2026-09-19",
+      "start": "15:15",
+      "end": "18:45",
+      "who": "jürgen",
+      "type": "laara",
+      "note": "",
+      "status": "tehtud",
+      "updated": "2026-09-21T15:52:48.719Z"
     }
   ]
 }
