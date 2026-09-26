@@ -295,6 +295,17 @@
       "note": "",
       "status": "plaan",
       "updated": "2026-09-26T18:04:17.773Z"
+    },
+    {
+      "id": "qv57eypm",
+      "date": "2026-10-02",
+      "start": "18:30",
+      "end": "19:30",
+      "who": "eike",
+      "type": "vaba",
+      "status": "plaan",
+      "note": "",
+      "updated": "2026-09-26T18:04:40.189Z"
     }
   ]
 }
